@@ -16,8 +16,13 @@
                 </div>
                 <div class="mt-4"><button id="mock-run" class="btn-primary"><i class="fas fa-play"></i> 生成 Mock 数据</button></div>
             `;
-            document.getElementById('mock-run').onclick = () => {
-                const configStr = document.getElementById('mock-config').value;
+            
+            const runBtn = container.querySelector('#mock-run');
+            const configEl = container.querySelector('#mock-config');
+            const outputEl = container.querySelector('#mock-output');
+            
+            runBtn.onclick = () => {
+                const configStr = configEl.value;
                 const res = safeJsonParse(configStr);
                 if(res.error) { showToast(res.error, 'error'); return; }
                 const cfg = res.data;
@@ -31,7 +36,7 @@
                     }
                     result.push(item);
                 }
-                document.getElementById('mock-output').value = JSON.stringify(result, null, 2);
+                outputEl.value = JSON.stringify(result, null, 2);
                 showToast('生成成功', 'success');
             };
         },

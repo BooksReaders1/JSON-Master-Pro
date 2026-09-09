@@ -10,12 +10,17 @@
                 </div>
                 <div class="mt-4"><button id="java-run" class="btn-primary"><i class="fas fa-play"></i> 生成 Java Map</button></div>
             `;
-            document.getElementById('java-run').onclick = () => {
-                const input = document.getElementById('java-input').value;
+            
+            const runBtn = container.querySelector('#java-run');
+            const inputEl = container.querySelector('#java-input');
+            const outputEl = container.querySelector('#java-output');
+            
+            runBtn.onclick = () => {
+                const input = inputEl.value;
                 const res = safeJsonParse(input);
                 if(res.error) { showToast(res.error, 'error'); return; }
                 const code = toJsonMap(res.data);
-                document.getElementById('java-output').value = code;
+                outputEl.value = code;
                 showToast('生成成功', 'success');
             };
         },

@@ -13,9 +13,15 @@
                     <textarea id="query-output" class="editor-box flex-1 resize-none" readonly></textarea>
                 </div>
             `;
-            document.getElementById('query-run').onclick = () => {
-                const lang = document.getElementById('query-lang').value;
-                const expr = document.getElementById('query-expr').value;
+            
+            const runBtn = container.querySelector('#query-run');
+            const langEl = container.querySelector('#query-lang');
+            const exprEl = container.querySelector('#query-expr');
+            const outputEl = container.querySelector('#query-output');
+            
+            runBtn.onclick = () => {
+                const lang = langEl.value;
+                const expr = exprEl.value;
                 const inputData = window.AppInstance.globalInput;
                 const res = safeJsonParse(inputData);
                 if(res.error) { showToast(res.error, 'error'); return; }
@@ -26,7 +32,7 @@
                     } else {
                         result = jmespath.search(res.data, expr);
                     }
-                    document.getElementById('query-output').value = JSON.stringify(result, null, 2);
+                    outputEl.value = JSON.stringify(result, null, 2);
                     showToast('查询成功', 'success');
                 } catch(e) { showToast(e.message, 'error'); }
             };
