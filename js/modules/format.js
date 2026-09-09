@@ -27,32 +27,38 @@
                 </div>
             `;
 
-            document.getElementById('fmt-beautify').onclick = () => {
-                const input = document.getElementById('fmt-input').value;
+            const beautifyBtn = container.querySelector('#fmt-beautify');
+            const minifyBtn = container.querySelector('#fmt-minify');
+            const copyBtn = container.querySelector('#fmt-copy');
+            const inputEl = container.querySelector('#fmt-input');
+            const outputEl = container.querySelector('#fmt-output');
+
+            beautifyBtn.onclick = () => {
+                const input = inputEl.value;
                 if (!input.trim()) { showToast('请输入 JSON', 'warning'); return; }
                 const result = formatJson(input);
                 if (result) {
-                    document.getElementById('fmt-output').value = result;
+                    outputEl.value = result;
                     showToast('格式化成功', 'success');
                 } else {
                     showToast('JSON 格式错误', 'error');
                 }
             };
 
-            document.getElementById('fmt-minify').onclick = () => {
-                const input = document.getElementById('fmt-input').value;
+            minifyBtn.onclick = () => {
+                const input = inputEl.value;
                 if (!input.trim()) { showToast('请输入 JSON', 'warning'); return; }
                 const result = minifyJson(input);
                 if (result) {
-                    document.getElementById('fmt-output').value = result;
+                    outputEl.value = result;
                     showToast('压缩成功', 'success');
                 } else {
                     showToast('JSON 格式错误', 'error');
                 }
             };
 
-            document.getElementById('fmt-copy').onclick = () => {
-                const output = document.getElementById('fmt-output').value;
+            copyBtn.onclick = () => {
+                const output = outputEl.value;
                 if (output) {
                     navigator.clipboard.writeText(output);
                     showToast('已复制到剪贴板', 'success');

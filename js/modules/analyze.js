@@ -21,17 +21,29 @@
         activate: (globalInput) => {
             if(!globalInput.trim()) return;
             const res = safeJsonParse(globalInput);
-            if(res.error) { document.getElementById('ana-size').textContent = 'Invalid JSON'; return; }
+            if(res.error) { 
+                const sizeEl = document.getElementById('ana-size');
+                if(sizeEl) sizeEl.textContent = 'Invalid JSON'; 
+                return; 
+            }
             const size = new Blob([globalInput]).size;
-            document.getElementById('ana-size').textContent = size > 1024*1024 ? (size/1024/1024).toFixed(2)+'MB' : size > 1024 ? (size/1024).toFixed(2)+'KB' : size+'B';
+            const sizeEl = document.getElementById('ana-size');
+            if(sizeEl) {
+                sizeEl.textContent = size > 1024*1024 ? (size/1024/1024).toFixed(2)+'MB' : size > 1024 ? (size/1024).toFixed(2)+'KB' : size+'B';
+            }
             const stats = analyzeStats(res.data);
-            document.getElementById('ana-count').textContent = stats.count;
-            document.getElementById('ana-depth').textContent = stats.depth;
-            document.getElementById('ana-null').textContent = stats.nulls;
+            const countEl = document.getElementById('ana-count');
+            const depthEl = document.getElementById('ana-depth');
+            const nullEl = document.getElementById('ana-null');
+            if(countEl) countEl.textContent = stats.count;
+            if(depthEl) depthEl.textContent = stats.depth;
+            if(nullEl) nullEl.textContent = stats.nulls;
             const typesEl = document.getElementById('ana-types');
-            typesEl.innerHTML = '';
-            for(const [t,c] of Object.entries(stats.types)) {
-                typesEl.innerHTML += '<div class="flex justify-between text-sm"><span>'+t+'</span><span class="text-gray-400">'+c+'</span></div>';
+            if(typesEl) {
+                typesEl.innerHTML = '';
+                for(const [t,c] of Object.entries(stats.types)) {
+                    typesEl.innerHTML += '<div class="flex justify-between text-sm"><span>'+t+'</span><span class="text-gray-400">'+c+'</span></div>';
+                }
             }
         },
         deactivate: () => {}

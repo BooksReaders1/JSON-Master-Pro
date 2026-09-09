@@ -17,17 +17,21 @@
                 </div>
             `;
 
-            document.getElementById('tree-expand').onclick = () => toggleAll(true);
-            document.getElementById('tree-collapse').onclick = () => toggleAll(false);
+            const expandBtn = container.querySelector('#tree-expand');
+            const collapseBtn = container.querySelector('#tree-collapse');
+            const searchInput = container.querySelector('#tree-search');
+            const treeContainer = container.querySelector('#tree-container');
+
+            expandBtn.onclick = () => toggleAll(true);
+            collapseBtn.onclick = () => toggleAll(false);
             
             let searchMatches = [];
             let currentMatch = -1;
             
-            document.getElementById('tree-search').addEventListener('input', (e) => {
+            searchInput.addEventListener('input', (e) => {
                 const term = e.target.value.toLowerCase();
                 if (!term) return;
-                const container = document.getElementById('tree-container');
-                const matches = container.querySelectorAll('[data-key*="' + term.toLowerCase() + '"], [data-value*="' + term.toLowerCase() + '"]');
+                const matches = treeContainer.querySelectorAll('[data-key*="' + term.toLowerCase() + '"], [data-value*="' + term.toLowerCase() + '"]');
                 matches.forEach(el => el.classList.remove('highlight-search'));
                 searchMatches = Array.from(matches);
                 if (searchMatches.length > 0) {
@@ -44,9 +48,8 @@
             }
 
             function toggleAll(expand) {
-                const container = document.getElementById('tree-container');
-                const carets = container.querySelectorAll('.caret');
-                const children = container.querySelectorAll('.tree-children');
+                const carets = treeContainer.querySelectorAll('.caret');
+                const children = treeContainer.querySelectorAll('.tree-children');
                 carets.forEach(c => c.classList.toggle('caret-down', expand));
                 children.forEach(c => c.classList.toggle('hidden-node', !expand));
             }

@@ -28,14 +28,22 @@
                 <div id="cmp-result" class="mt-4 editor-box flex-1 overflow-auto diff-container"></div>
             `;
 
-            document.getElementById('cmp-run').onclick = runDiff;
-            document.getElementById('cmp-sync-left').onclick = () => {
-                const val = document.getElementById('cmp-left').value;
+            const runBtn = container.querySelector('#cmp-run');
+            const syncLeftBtn = container.querySelector('#cmp-sync-left');
+            const syncRightBtn = container.querySelector('#cmp-sync-right');
+            const leftEl = container.querySelector('#cmp-left');
+            const rightEl = container.querySelector('#cmp-right');
+            const resultEl = container.querySelector('#cmp-result');
+            const statsEl = container.querySelector('#cmp-stats');
+
+            runBtn.onclick = () => runDiff(leftEl, rightEl, resultEl, statsEl);
+            syncLeftBtn.onclick = () => {
+                const val = leftEl.value;
                 if (window.AppInstance) window.AppInstance.setGlobalInput(val);
                 showToast('已同步到主输入', 'success');
             };
-            document.getElementById('cmp-sync-right').onclick = () => {
-                const val = document.getElementById('cmp-right').value;
+            syncRightBtn.onclick = () => {
+                const val = rightEl.value;
                 if (window.AppInstance) window.AppInstance.setGlobalInput(val);
                 showToast('已同步到主输入', 'success');
             };
@@ -45,11 +53,9 @@
         deactivate: () => {}
     };
 
-    function runDiff() {
-        const leftVal = document.getElementById('cmp-left').value;
-        const rightVal = document.getElementById('cmp-right').value;
-        const resultEl = document.getElementById('cmp-result');
-        const statsEl = document.getElementById('cmp-stats');
+    function runDiff(leftEl, rightEl, resultEl, statsEl) {
+        const leftVal = leftEl.value;
+        const rightVal = rightEl.value;
 
         const leftObj = safeJsonParse(leftVal);
         const rightObj = safeJsonParse(rightVal);

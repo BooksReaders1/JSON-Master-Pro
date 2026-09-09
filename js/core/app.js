@@ -19,6 +19,11 @@ class App {
         const tabsContainer = document.getElementById('tabs-wrapper');
         const mainContainer = document.getElementById('main-container');
 
+        if (!tabsContainer || !mainContainer) {
+            console.error('Core containers not found.');
+            return;
+        }
+
         const btn = document.createElement('button');
         btn.id = `tab-btn-${id}`;
         btn.className = 'tab-btn flex items-center gap-2';
@@ -29,8 +34,13 @@ class App {
         const panel = document.createElement('div');
         panel.id = `module-panel-${id}`;
         panel.className = 'module-panel hidden h-full w-full';
-        if (config.init) config.init(panel);
+        
+        // 关键修复：先 append 到 DOM，再执行 init，确保 querySelector 能找到元素
         mainContainer.appendChild(panel);
+        
+        if (config.init) {
+            config.init(panel);
+        }
     }
 
     switchTab(moduleId) {

@@ -10,12 +10,17 @@
                 </div>
                 <div class="mt-4"><button id="bean-run" class="btn-primary"><i class="fas fa-play"></i> 生成 Java Bean</button></div>
             `;
-            document.getElementById('bean-run').onclick = () => {
-                const input = document.getElementById('bean-input').value;
+            
+            const runBtn = container.querySelector('#bean-run');
+            const inputEl = container.querySelector('#bean-input');
+            const outputEl = container.querySelector('#bean-output');
+            
+            runBtn.onclick = () => {
+                const input = inputEl.value;
                 const res = safeJsonParse(input);
                 if(res.error) { showToast(res.error, 'error'); return; }
                 const code = generateBean(res.data, 'Root');
-                document.getElementById('bean-output').value = code;
+                outputEl.value = code;
                 showToast('生成成功', 'success');
             };
         },

@@ -5,8 +5,7 @@ node_modules/
 # Build artifacts
 dist/
 build/
-*.min.js
-*.bundle.js
+*.js.map
 
 # Logs and temp files
 *.log
@@ -20,50 +19,28 @@ build/
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage.*
-.nox/
-.pytest_cache/
-.mypy_cache/
 
 # Java
 *.class
 *.jar
 *.war
 *.ear
-*.tar.gz
 target/
 .gradle/
-build/
 
 # C/C++
 *.o
 *.obj
 *.so
 *.a
-*.dylib
 *.dll
 *.exe
-*.out
 
 # Compression
 *.zip
