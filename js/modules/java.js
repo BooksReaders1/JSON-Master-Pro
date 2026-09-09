@@ -1,73 +1,38 @@
-// Java Map 模块
 (function() {
     const JavaModule = {
         name: 'Java Map',
         icon: 'fa-coffee',
-        
-        init: function(container) {
+        init: (container) => {
             container.innerHTML = `
-                <div class="flex flex-col h-full gap-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-white">JSON → Java Map</h3>
-                        <button id="java-run" class="btn-primary"><i class="fas fa-play"></i> 生成代码</button>
-                    </div>
-                    <textarea id="java-output" class="editor-box flex-1" readonly placeholder="生成的 Java Map 代码"></textarea>
+                <div class="split-pane">
+                    <div><textarea id="java-input" class="editor-box w-full h-full resize-none" placeholder="粘贴 JSON..."></textarea></div>
+                    <div><textarea id="java-output" class="editor-box w-full h-full resize-none" readonly></textarea></div>
                 </div>
+                <div class="mt-4"><button id="java-run" class="btn-primary"><i class="fas fa-play"></i> 生成 Java Map</button></div>
             `;
-
-            document.getElementById('java-run').onclick = () => this.generate();
+            document.getElementById('java-run').onclick = () => {
+                const input = document.getElementById('java-input').value;
+                const res = safeJsonParse(input);
+                if(res.error) { showToast(res.error, 'error'); return; }
+                const code = toJsonMap(res.data);
+                document.getElementById('java-output').value = code;
+                showToast('生成成功', 'success');
+            };
         },
-
-        activate: function(input) {
-            this.input = input;
+        activate: (globalInput) => {
+            const el = document.getElementById('java-input');
+            if(el && !el.value && globalInput) { el.value = globalInput; document.getElementById('java-run').click(); }
         },
-
-        generate: function() {
-            const parsed = JSONUtils.parse(this.input);
-            if (parsed === null) {
-                showToast('无效的 JSON', 'error');
-                return;
-            }
-
-            const code = this.convertToMap(parsed, 0);
-            document.getElementById('java-output').value = code;
-            showToast('生成成功', 'success');
-        },
-
-        convertToMap: function(obj, indent) {
-            const pad = '  '.repeat(indent);
-            
-            if (obj === null) return 'null';
-            if (typeof obj === 'boolean') return String(obj);
-            if (typeof obj === 'number') {
-                if (Number.isInteger(obj) && Math.abs(obj) <= Number.MAX_SAFE_INTEGER) {
-                    return String(obj);
-                }
-                return `new java.math.BigDecimal("${obj}")`;
-            }
-            if (typeof obj === 'string') {
-                return `"${obj.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
-            }
-
-            if (Array.isArray(obj)) {
-                if (obj.length === 0) return 'new java.util.ArrayList<>()';
-                const items = obj.map(item => this.convertToMap(item, indent + 1)).join(',\n' + pad + '  ');
-                return `new java.util.ArrayList<>() {{\n${pad}  ${items.split('\n').join('\n' + pad + '  ')}\n${pad}}}`;
-            }
-
-            const keys = Object.keys(obj);
-            if (keys.length === 0) return 'new java.util.HashMap<>()';
-            
-            const entries = keys.map(key => {
-                const value = this.convertToMap(obj[key], indent + 1);
-                return `${pad}  put("${key}", ${value});`;
-            }).join('\n');
-
-            return `new java.util.HashMap<>() {{\n${entries}\n${pad}}}`;
-        }
+        deactivate: () => {}
     };
-
-    if (window.AppInstance) {
-        window.AppInstance.register('java', JavaModule);
+    function toJsonMap(data) {
+        if(data === null) return 'null';
+        if(typeof data === 'boolean' || typeof data === 'number') return String(data);
+        if(typeof data === 'string') return '"' + data.replace(/"/g, '\\"') + '"';
+        if(Array.isArray(data)) return 'new ArrayList<>(){{' + data.map(v => 'add(' + toJsonMap(v) + ');').join('') + '}}';
+        let s = 'new HashMap<>(){{';
+        for(const [k,v] of Object.entries(data)) s += 'put("' + k + '", ' + toJsonMap(v) + ');';
+        return s + '}}';
     }
+    if(window.AppInstance) window.AppInstance.register('java', JavaModule);
 })();
