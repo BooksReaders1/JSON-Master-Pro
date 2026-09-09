@@ -10,6 +10,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.18/index.min.css" rel="stylesheet">
+    <!-- JSONPath 和 JMESPath -->
+    <script src="https://cdn.jsdelivr.net/npm/jsonpath-plus@9.0.0/dist/index-browser-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jmespath@0.16.0/jmespath.min.js"></script>
+    <!-- Faker.js (可选) -->
+    <script src="https://cdn.jsdelivr.net/npm/@faker-js/faker@8.4.1/dist/faker.min.js"></script>
 
     <style>
         body { font-family: 'JetBrains Mono', monospace; background-color: #0f172a; color: #e2e8f0; }
@@ -100,6 +105,9 @@
             <button id="tabConvert" onclick="switchTab('convert')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">JSON ⇄ String</button>
             <button id="tabJava" onclick="switchTab('java')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">JSON ⇄ Java Map</button>
             <button id="tabBean" onclick="switchTab('bean')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">JSON → Java Bean</button>
+            <button id="tabMock" onclick="switchTab('mock')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">Mock 数据</button>
+            <button id="tabQuery" onclick="switchTab('query')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">查询过滤</button>
+            <button id="tabAnalyze" onclick="switchTab('analyze')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">性能分析</button>
         </div>
 
         <!-- VIEW 1: 格式化 -->
@@ -340,6 +348,112 @@
                 <span id="beanTip">Lombok + @Schema · 禁止 Map/Object · 类型严格对应 · @JsonProperty 仅在键名≠字段名时添加</span>
             </div>
         </div>
+
+        <!-- VIEW 7: Mock 数据生成 -->
+        <div id="viewMock" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="doMockGenerate()" class="px-4 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>生成 Mock</button>
+                    <button onclick="loadMockSample()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">示例模板</button>
+                    <label class="flex items-center gap-1 text-[11px] text-slate-400">生成数量
+                        <input type="number" id="mockCount" value="5" min="1" max="100" class="bg-slate-900 border border-slate-600 rounded px-1 py-0.5 w-16 text-xs text-slate-200 outline-none focus:border-blue-500">
+                    </label>
+                    <label class="flex items-center gap-1 text-[11px] text-slate-400 cursor-pointer">
+                        <input type="checkbox" id="mockUseFaker" checked class="accent-purple-600"> 使用 Faker.js
+                    </label>
+                    <span class="sync-badge"><i class="fa-solid fa-arrows-rotate"></i>输入已全局同步</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="copyMockOutput()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"><i class="fa-solid fa-copy mr-1"></i>复制</button>
+                </div>
+            </div>
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                <div class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-3 gap-2">
+                    <label class="text-xs text-slate-400 font-bold">配置/模板 (JSON)</label>
+                    <textarea id="mockInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 focus:border-purple-500 outline-none text-xs leading-relaxed" spellcheck="false" placeholder='{"name": "@name", "email": "@email", "age": "@integer(18,60)'}'></textarea>
+                </div>
+                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2 relative">
+                    <label class="text-xs text-slate-400 font-bold">输出结果</label>
+                    <textarea id="mockOutput" readonly class="flex-1 w-full bg-slate-800/60 text-green-200/90 p-3 rounded-lg border border-slate-700 outline-none text-xs leading-relaxed" placeholder="生成的 Mock 数据..."></textarea>
+                    <div id="mockError" class="hidden absolute left-3 right-3 bottom-3 max-h-1/2 overflow-auto bg-red-900/80 border border-red-500 text-red-200 text-xs rounded px-3 py-2 z-10 whitespace-pre-wrap">
+                        <i class="fa-solid fa-circle-exclamation mr-1"></i><span id="mockErrorText"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="px-4 py-1 text-[10px] text-slate-500 border-t border-slate-700 flex justify-between">
+                <span id="mockStats">等待生成</span>
+                <span>支持 @name, @email, @phone, @city 等 Faker 占位符</span>
+            </div>
+        </div>
+
+        <!-- VIEW 8: JSON 查询与过滤 -->
+        <div id="viewQuery" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="doQueryExecute()" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-play mr-1"></i>执行查询</button>
+                    <button onclick="insertQueryExample('jsonpath')" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">JSONPath 示例</button>
+                    <button onclick="insertQueryExample('jmespath')" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">JMESPath 示例</button>
+                    <span class="sync-badge"><i class="fa-solid fa-arrows-rotate"></i>输入已全局同步</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="copyQueryOutput()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"><i class="fa-solid fa-copy mr-1"></i>复制</button>
+                </div>
+            </div>
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                <div class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-3 gap-2">
+                    <label class="text-xs text-slate-400 font-bold">查询表达式</label>
+                    <input type="text" id="queryExpr" class="bg-slate-800 text-cyan-200 p-2 rounded-lg border border-slate-700 focus:border-cyan-500 outline-none text-xs" placeholder="$..book[?(@.price)]">
+                    <div class="flex items-center gap-3 text-[11px] text-slate-400">
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name="querySyntax" value="jsonpath" checked class="accent-cyan-600"> JSONPath
+                        </label>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name="querySyntax" value="jmespath" class="accent-cyan-600"> JMESPath
+                        </label>
+                    </div>
+                    <textarea id="queryInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 focus:border-cyan-500 outline-none text-xs leading-relaxed" spellcheck="false" placeholder="粘贴 JSON 数据进行查询..."></textarea>
+                </div>
+                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2 relative">
+                    <label class="text-xs text-slate-400 font-bold">查询结果</label>
+                    <textarea id="queryOutput" readonly class="flex-1 w-full bg-slate-800/60 text-cyan-200/90 p-3 rounded-lg border border-slate-700 outline-none text-xs leading-relaxed" placeholder="查询结果将显示在这里..."></textarea>
+                    <div id="queryError" class="hidden absolute left-3 right-3 bottom-3 max-h-1/2 overflow-auto bg-red-900/80 border border-red-500 text-red-200 text-xs rounded px-3 py-2 z-10 whitespace-pre-wrap">
+                        <i class="fa-solid fa-circle-exclamation mr-1"></i><span id="queryErrorText"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="px-4 py-1 text-[10px] text-slate-500 border-t border-slate-700 flex justify-between">
+                <span id="queryStats">等待执行</span>
+                <span>支持 JSONPath ($..) 和 JMESPath 语法</span>
+            </div>
+        </div>
+
+        <!-- VIEW 9: 性能分析 -->
+        <div id="viewAnalyze" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="doAnalyze()" class="px-4 py-1.5 bg-orange-600 hover:bg-orange-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-chart-bar mr-1"></i>开始分析</button>
+                    <span class="sync-badge"><i class="fa-solid fa-arrows-rotate"></i>输入已全局同步</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="copyAnalyzeReport()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"><i class="fa-solid fa-copy mr-1"></i>复制报告</button>
+                </div>
+            </div>
+            <div class="flex-1 flex overflow-hidden">
+                <div class="w-full flex flex-col p-3 gap-2">
+                    <textarea id="analyzeInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 focus:border-orange-500 outline-none text-xs leading-relaxed" spellcheck="false" placeholder="粘贴 JSON 数据进行分析..."></textarea>
+                    <div id="analyzeError" class="hidden bg-red-900/80 border border-red-500 text-red-200 text-xs rounded px-3 py-2 whitespace-pre-wrap">
+                        <i class="fa-solid fa-circle-exclamation mr-1"></i><span id="analyzeErrorText"></span>
+                    </div>
+                    <div id="analyzeOutput" class="flex-1 bg-slate-800/60 rounded-lg border border-slate-700 p-4 overflow-auto hidden">
+                        <!-- 分析结果动态生成 -->
+                    </div>
+                </div>
+            </div>
+            <div class="px-4 py-1 text-[10px] text-slate-500 border-t border-slate-700 flex justify-between">
+                <span id="analyzeStats">等待分析</span>
+                <span>统计大小、深度、类型分布、重复值检测</span>
+            </div>
+        </div>
     </main>
 
     <footer class="bg-slate-900 border-t border-slate-700 px-6 py-1 text-[10px] text-slate-500 flex justify-between">
@@ -357,7 +471,7 @@
         let isManualScrolling = false, isInputSyncing = false, diffMode = false;
         let convDir = 'j2s', jmDir = 'j2m';
         const AUTO_COLLAPSE_DEPTH = 4, AUTO_COLLAPSE_SIZE = 100;
-        const SYNC_IDS = ['inputJson', 'treeInput', 'compareLeft', 'convInput', 'jmInput', 'beanInput'];
+        const SYNC_IDS = ['inputJson', 'treeInput', 'compareLeft', 'convInput', 'jmInput', 'beanInput', 'mockInput', 'queryInput', 'analyzeInput'];
 
         const els = {
             input: document.getElementById('inputJson'),
@@ -484,15 +598,18 @@
         function syncRight() { if (els.cmpRight.value) { els.input.value = els.cmpRight.value; onSyncInput(els.input); } }
         function switchTab(tab) {
             currentTab = tab;
-            ['format','tree','compare','convert','java','bean'].forEach(t => {
-                const viewId = { format:'viewFormat', tree:'viewTree', compare:'viewCompare', convert:'viewConvert', java:'viewJava', bean:'viewBean' }[t];
-                const tabId = { format:'tabFormat', tree:'tabTree', compare:'tabCompare', convert:'tabConvert', java:'tabJava', bean:'tabBean' }[t];
+            ['format','tree','compare','convert','java','bean','mock','query','analyze'].forEach(t => {
+                const viewId = { format:'viewFormat', tree:'viewTree', compare:'viewCompare', convert:'viewConvert', java:'viewJava', bean:'viewBean', mock:'viewMock', query:'viewQuery', analyze:'viewAnalyze' }[t];
+                const tabId = { format:'tabFormat', tree:'tabTree', compare:'tabCompare', convert:'tabConvert', java:'tabJava', bean:'tabBean', mock:'tabMock', query:'tabQuery', analyze:'tabAnalyze' }[t];
                 document.getElementById(viewId).classList.toggle('hidden', t !== tab);
                 document.getElementById(tabId).classList.toggle('tab-active', t === tab);
             });
             if (tab === 'convert') doConvert();
             else if (tab === 'java') doJavaConvert();
             else if (tab === 'bean') doBeanConvert();
+            else if (tab === 'mock') doMockGenerate();
+            else if (tab === 'query') doQueryExecute();
+            else if (tab === 'analyze') doAnalyze();
         }
 
         // ================= 格式化输出 + 搜索 =================
@@ -1007,9 +1124,343 @@
             doBeanConvert(true);
         }
 
+
         // ================= Utils =================
         function countKeys(o) { let c = 0; (function rec(x) { if (x && typeof x === 'object') for (const k in x) { c++; rec(x[k]); } })(o); return c; }
         function formatBytes(b) { if (!+b) return '0 B'; const k = 1024, s = ['B','KB','MB','GB']; const i = Math.floor(Math.log(b) / Math.log(k)); return `${parseFloat((b / Math.pow(k, i)).toFixed(1))} ${s[i]}`; }
+
+        // ================= Mock 数据生成 =================
+        function doMockGenerate() {
+            const src = els.mockInput.value.trim();
+            hideMockError();
+            if (!src) { els.mockOutput.value = ''; els.mockStats.textContent = '准备生成'; return; }
+            const count = parseInt(document.getElementById('mockCount').value) || 5;
+            const useFaker = document.getElementById('mockUseFaker').checked;
+            
+            withLoading('生成 Mock 数据中...', () => {
+                try {
+                    let template;
+                    try {
+                        template = JSON.parse(src);
+                    } catch (e) {
+                        template = extractFieldsFromJavaBean(src);
+                    }
+                    
+                    const result = generateMockData(template, count, useFaker);
+                    els.mockOutput.value = JSON.stringify(result, null, 4);
+                    els.mockStats.textContent = `已生成 ${count} 条数据`;
+                } catch (err) {
+                    showMockError('生成失败：' + err.message);
+                    els.mockStats.textContent = '生成失败';
+                }
+            });
+        }
+        
+        function extractFieldsFromJavaBean(code) {
+            const fields = {};
+            const fieldRegex = /private\s+\w+\s+(\w+);/g;
+            let match;
+            while ((match = fieldRegex.exec(code)) !== null) {
+                const fieldName = match[1];
+                fields[fieldName] = '@placeholder';
+            }
+            if (Object.keys(fields).length === 0) throw new Error('无法解析 JSON 或 Java Bean');
+            return fields;
+        }
+        
+        function generateMockData(template, count, useFaker) {
+            const result = [];
+            for (let i = 0; i < count; i++) {
+                result.push(generateSingleMock(template, useFaker));
+            }
+            return Array.isArray(template) ? result : result[0];
+        }
+        
+        function generateSingleMock(template, useFaker) {
+            if (!template || typeof template !== 'object') return template;
+            if (Array.isArray(template)) return template.map(item => generateSingleMock(item, useFaker));
+            
+            const result = {};
+            for (const key in template) {
+                const value = template[key];
+                if (value === '@placeholder' || value === null) {
+                    result[key] = useFaker ? generateFakerValue(key) : generateSimpleValue(key);
+                } else if (typeof value === 'string' && value.startsWith('@faker')) {
+                    const fakerExpr = value.match(/@faker\(['"](.+)['"]\)/);
+                    result[key] = useFaker && fakerExpr ? callFaker(fakerExpr[1]) : generateSimpleValue(key);
+                } else if (typeof value === 'object') {
+                    result[key] = generateSingleMock(value, useFaker);
+                } else {
+                    result[key] = value;
+                }
+            }
+            return result;
+        }
+        
+        function generateFakerValue(key) {
+            const lowerKey = key.toLowerCase();
+            if (!window.faker) return generateSimpleValue(key);
+            if (lowerKey.includes('name')) return window.faker.person?.fullName() || '张三';
+            if (lowerKey.includes('email')) return window.faker.internet?.email() || 'test@example.com';
+            if (lowerKey.includes('phone') || lowerKey.includes('mobile')) return window.faker.phone?.number() || '13800138000';
+            if (lowerKey.includes('address')) return window.faker.location?.streetAddress() || '北京市朝阳区 xx 路 xx 号';
+            if (lowerKey.includes('city')) return window.faker.location?.city() || '北京';
+            if (lowerKey.includes('company')) return window.faker.company?.name() || '某某科技公司';
+            if (lowerKey.includes('title') || lowerKey.includes('job')) return window.faker.person?.jobTitle() || '工程师';
+            if (lowerKey.includes('url') || lowerKey.includes('website')) return window.faker.internet?.url() || 'https://example.com';
+            if (lowerKey.includes('avatar') || lowerKey.includes('image')) return window.faker.image?.avatar() || 'https://i.pravatar.cc/150';
+            if (lowerKey.includes('id') || lowerKey.includes('code')) return Math.random().toString(36).substring(2, 15);
+            return generateSimpleValue(key);
+        }
+        
+        function generateSimpleValue(key) {
+            const lowerKey = key.toLowerCase();
+            if (lowerKey.includes('id')) return Math.floor(Math.random() * 1000000);
+            if (lowerKey.includes('price') || lowerKey.includes('amount')) return parseFloat((Math.random() * 1000).toFixed(2));
+            if (lowerKey.includes('age')) return Math.floor(Math.random() * 50) + 18;
+            if (lowerKey.includes('count') || lowerKey.includes('qty')) return Math.floor(Math.random() * 100);
+            if (lowerKey.includes('active') || lowerKey.includes('enabled')) return Math.random() > 0.5;
+            if (lowerKey.includes('date') || lowerKey.includes('time')) return new Date().toISOString();
+            return 'sample_' + Math.random().toString(36).substring(7);
+        }
+        
+        function callFaker(expr) {
+            if (!window.faker) return null;
+            try {
+                const parts = expr.split('.');
+                let obj = window.faker;
+                for (const part of parts) {
+                    obj = obj[part];
+                    if (!obj) return null;
+                }
+                return typeof obj === 'function' ? obj() : obj;
+            } catch (e) { return null; }
+        }
+        
+        function showMockError(msg) { els.mockErrorText.textContent = msg; els.mockError.classList.remove('hidden'); }
+        function hideMockError() { els.mockError.classList.add('hidden'); }
+        function copyMockOutput() { if (!els.mockOutput.value) return; navigator.clipboard.writeText(els.mockOutput.value); showToast('已复制到剪贴板', 'success'); }
+        function loadMockSample() {
+            els.mockInput.value = JSON.stringify({
+                "userId": "@placeholder",
+                "userName": "@faker('person.fullName')",
+                "email": "@faker('internet.email')",
+                "phone": "@faker('phone.number')",
+                "address": { "city": "@faker('location.city')", "street": "@faker('location.streetAddress')" },
+                "company": "@faker('company.name')",
+                "isActive": true,
+                "balance": 128.50
+            }, null, 4);
+            propagateFrom(els.mockInput);
+        }
+
+        // ================= JSON 查询与过滤 =================
+        function doQueryExecute() {
+            const src = els.queryInput.value.trim();
+            const expr = document.getElementById('queryExpr').value.trim() || '$';
+            const syntax = document.getElementById('querySyntax').value;
+            hideQueryError();
+            
+            if (!src) { showQueryError('请输入 JSON 数据'); els.queryStats.textContent = '等待执行'; return; }
+            
+            withLoading('执行查询中...', () => {
+                try {
+                    const data = JSON.parse(src);
+                    let result;
+                    
+                    if (syntax === 'jsonpath') {
+                        if (!window.JSONPath) throw new Error('JSONPath 库未加载');
+                        result = window.JSONPath({ path: expr, json: data });
+                    } else {
+                        if (!window.jmespath) throw new Error('JMESPath 库未加载');
+                        result = window.jmespath.search(data, expr);
+                    }
+                    
+                    els.queryOutput.value = JSON.stringify(result, null, 4);
+                    const resultType = Array.isArray(result) ? `数组 (${result.length}项)` : typeof result;
+                    els.queryStats.textContent = `查询成功 · 结果类型：${resultType}`;
+                } catch (err) {
+                    showQueryError(syntax.toUpperCase() + ' 执行失败：' + err.message);
+                    els.queryStats.textContent = '查询失败';
+                }
+            });
+        }
+        
+        function showQueryError(msg) { els.queryErrorText.textContent = msg; els.queryError.classList.remove('hidden'); }
+        function hideQueryError() { els.queryError.classList.add('hidden'); }
+        function copyQueryOutput() { if (!els.queryOutput.value) return; navigator.clipboard.writeText(els.queryOutput.value); showToast('已复制到剪贴板', 'success'); }
+        function insertQueryExample() {
+            const syntax = document.getElementById('querySyntax').value;
+            if (syntax === 'jsonpath') {
+                document.getElementById('queryExpr').value = '$.store.book[*].author';
+                showToast('已插入 JSONPath 示例表达式', 'info');
+            } else {
+                document.getElementById('queryExpr').value = 'people[*].name';
+                showToast('已插入 JMESPath 示例表达式', 'info');
+            }
+        }
+        function loadQuerySample() {
+            els.queryInput.value = JSON.stringify({
+                "store": {
+                    "book": [
+                        { "category": "reference", "author": "Nigel Rees", "title": "Sayings of the Century", "price": 8.95 },
+                        { "category": "fiction", "author": "Evelyn Waugh", "title": "Sword of Honour", "price": 12.99 },
+                        { "category": "fiction", "author": "Herman Melville", "title": "Moby Dick", "isbn": "0-553-21311-3", "price": 8.99 },
+                        { "category": "fiction", "author": "J. R. R. Tolkien", "title": "The Lord of the Rings", "isbn": "0-395-19395-8", "price": 22.99 }
+                    ],
+                    "bicycle": { "color": "red", "price": 19.95 }
+                },
+                "expensive": 10
+            }, null, 4);
+            propagateFrom(els.queryInput);
+            doQueryExecute();
+        }
+
+        // ================= 性能分析 =================
+        function doAnalyze() {
+            const src = els.analyzeInput.value.trim();
+            hideAnalyzeError();
+            
+            if (!src) { showAnalyzeError('请输入 JSON 数据'); els.analyzeStats.textContent = '等待分析'; return; }
+            
+            withLoading('分析中...', () => {
+                try {
+                    const startTime = performance.now();
+                    const data = JSON.parse(src);
+                    const parseTime = (performance.now() - startTime).toFixed(2);
+                    const stats = analyzeJson(data);
+                    
+                    const output = document.getElementById('analyzeOutput');
+                    output.innerHTML = `
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                                <div class="text-slate-400 text-xs mb-1">文件大小</div>
+                                <div class="text-xl font-bold text-blue-400">${formatBytes(src.length)}</div>
+                            </div>
+                            <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                                <div class="text-slate-400 text-xs mb-1">解析耗时</div>
+                                <div class="text-xl font-bold text-green-400">${parseTime} ms</div>
+                            </div>
+                            <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                                <div class="text-slate-400 text-xs mb-1">键值对数量</div>
+                                <div class="text-xl font-bold text-purple-400">${stats.keyCount}</div>
+                            </div>
+                            <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                                <div class="text-slate-400 text-xs mb-1">最大深度</div>
+                                <div class="text-xl font-bold text-orange-400">${stats.maxDepth}</div>
+                            </div>
+                            <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                                <div class="text-slate-400 text-xs mb-1">Null 值数量</div>
+                                <div class="text-xl font-bold text-red-400">${stats.nullCount}</div>
+                            </div>
+                            <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                                <div class="text-slate-400 text-xs mb-1">重复值检测</div>
+                                <div class="text-xl font-bold text-yellow-400">${stats.duplicates.length > 0 ? stats.duplicates.length + ' 个' : '无'}</div>
+                            </div>
+                        </div>
+                        ${stats.duplicates.length > 0 ? `
+                        <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                            <div class="text-slate-400 text-xs mb-2">重复值详情</div>
+                            <div class="text-xs text-slate-300 space-y-1 max-h-32 overflow-auto">
+                                ${stats.duplicates.slice(0, 10).map(d => `<div><span class="text-yellow-400">${d.value}</span> 出现 <span class="text-white">${d.count}</span> 次</div>`).join('')}
+                                ${stats.duplicates.length > 10 ? '<div class="text-slate-500">... 还有 ' + (stats.duplicates.length - 10) + ' 个</div>' : ''}
+                            </div>
+                        </div>` : ''}
+                        <div class="bg-slate-800 p-3 rounded border border-slate-700">
+                            <div class="text-slate-400 text-xs mb-2">类型分布</div>
+                            <div class="space-y-2">
+                                ${Object.entries(stats.typeDist).map(([type, count]) => `
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-xs text-slate-300 w-20">${type}</div>
+                                        <div class="flex-1 bg-slate-700 rounded-full h-2">
+                                            <div class="bg-blue-500 h-2 rounded-full" style="width: ${(count / stats.totalTypes) * 100}%"></div>
+                                        </div>
+                                        <div class="text-xs text-slate-400 w-12 text-right">${count}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                    els.analyzeStats.textContent = `分析完成 · ${parseTime}ms`;
+                } catch (err) {
+                    showAnalyzeError('分析失败：' + err.message);
+                    els.analyzeStats.textContent = '分析失败';
+                }
+            });
+        }
+        
+        function analyzeJson(data) {
+            let keyCount = 0, maxDepth = 0, nullCount = 0;
+            const typeDist = { object: 0, array: 0, string: 0, number: 0, boolean: 0, null: 0 };
+            const values = new Map();
+            
+            function traverse(obj, depth) {
+                if (depth > maxDepth) maxDepth = depth;
+                if (obj === null) { nullCount++; typeDist.null++; return; }
+                if (Array.isArray(obj)) {
+                    typeDist.array++;
+                    obj.forEach(item => traverse(item, depth + 1));
+                } else if (typeof obj === 'object') {
+                    typeDist.object++;
+                    for (const key in obj) {
+                        keyCount++;
+                        const val = obj[key];
+                        if (val === null) { nullCount++; typeDist.null++; }
+                        else {
+                            const valType = typeof val;
+                            if (valType !== 'object' && valType !== 'undefined') {
+                                const strVal = String(val);
+                                values.set(strVal, (values.get(strVal) || 0) + 1);
+                                if (valType === 'string') typeDist.string++;
+                                else if (valType === 'number') typeDist.number++;
+                                else if (valType === 'boolean') typeDist.boolean++;
+                            }
+                            traverse(val, depth + 1);
+                        }
+                    }
+                } else if (typeof obj === 'string') { typeDist.string++; values.set(obj, (values.get(obj) || 0) + 1); }
+                else if (typeof obj === 'number') { typeDist.number++; values.set(String(obj), (values.get(String(obj)) || 0) + 1); }
+                else if (typeof obj === 'boolean') { typeDist.boolean++; values.set(String(obj), (values.get(String(obj)) || 0) + 1); }
+            }
+            
+            traverse(data, 0);
+            const duplicates = [];
+            values.forEach((count, value) => { if (count > 1) duplicates.push({ value, count }); });
+            duplicates.sort((a, b) => b.count - a.count);
+            const totalTypes = Object.values(typeDist).reduce((a, b) => a + b, 0);
+            return { keyCount, maxDepth, nullCount, typeDist, duplicates, totalTypes };
+        }
+        
+        function showAnalyzeError(msg) { els.analyzeErrorText.textContent = msg; els.analyzeError.classList.remove('hidden'); }
+        function hideAnalyzeError() { els.analyzeError.classList.add('hidden'); }
+        function copyAnalyzeReport() {
+            const output = document.getElementById('analyzeOutput');
+            if (!output || output.children.length === 0) return;
+            navigator.clipboard.writeText(output.innerText);
+            showToast('已复制分析报告', 'success');
+        }
+    </script>
+    <!-- 核心框架 -->
+    <script src="js/core/toast.js"></script>
+    <script src="js/core/utils.js"></script>
+    <script src="js/core/app.js"></script>
+
+    <!-- 功能模块 - 按需添加新模块 -->
+    <script src="js/modules/format.js"></script>
+    <script src="js/modules/tree.js"></script>
+    <script src="js/modules/compare.js"></script>
+    <script src="js/modules/convert.js"></script>
+    <script src="js/modules/java.js"></script>
+    <script src="js/modules/bean.js"></script>
+    <script src="js/modules/mock.js"></script>
+    <script src="js/modules/query.js"></script>
+    <script src="js/modules/analyze.js"></script>
+
+    <script>
+        // 启动应用
+        document.addEventListener('DOMContentLoaded', () => {
+            App.bootstrap();
+        });
     </script>
 </body>
 </html>
