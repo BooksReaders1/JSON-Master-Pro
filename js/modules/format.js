@@ -1,82 +1,81 @@
+// 格式化模块
 (function() {
     const FormatModule = {
         name: '格式化',
         icon: 'fa-code',
         
-        init: (container) => {
+        init: function(container) {
             container.innerHTML = `
-                <div class="split-pane">
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="text-xs text-gray-400">输入 JSON</label>
-                            <div class="flex gap-2">
-                                <button id="fmt-beautify" class="btn-primary"><i class="fas fa-magic"></i> 格式化</button>
-                                <button id="fmt-minify" class="btn-secondary"><i class="fas fa-compress"></i> 压缩</button>
-                                <button id="fmt-copy" class="btn-secondary"><i class="fas fa-copy"></i> 复制</button>
-                            </div>
+                <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                    <section class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-4 gap-3">
+                        <div class="flex justify-between items-center">
+                            <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">原始 JSON</label>
+                            <button onclick="FormatModule.loadSample()" class="text-xs text-blue-400 hover:text-blue-300">加载示例</button>
                         </div>
-                        <textarea id="fmt-input" class="editor-box w-full h-full resize-none"></textarea>
-                    </div>
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <label class="text-xs text-gray-400">输出</label>
-                            <span id="fmt-status" class="text-xs text-gray-500"></span>
+                        <textarea id="fmtInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 rounded-lg border border-slate-700 focus:border-blue-500 outline-none text-sm leading-relaxed editor-box" placeholder="粘贴 JSON..."></textarea>
+                        <div class="flex gap-2">
+                            <button onclick="FormatModule.doFormat()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded">格式化</button>
+                            <button onclick="FormatModule.minify()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">压缩</button>
                         </div>
-                        <textarea id="fmt-output" class="editor-box w-full h-full resize-none" readonly></textarea>
-                    </div>
+                    </section>
+                    <section class="w-full md:w-1/2 flex flex-col p-4 gap-2 bg-slate-900/50">
+                        <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">输出</label>
+                        <pre id="fmtOutput" class="flex-1 overflow-auto bg-slate-800 rounded-lg border border-slate-700 p-4 text-sm whitespace-pre-wrap break-all"></pre>
+                    </section>
                 </div>
             `;
-
-            const beautifyBtn = container.querySelector('#fmt-beautify');
-            const minifyBtn = container.querySelector('#fmt-minify');
-            const copyBtn = container.querySelector('#fmt-copy');
-            const inputEl = container.querySelector('#fmt-input');
-            const outputEl = container.querySelector('#fmt-output');
-
-            beautifyBtn.onclick = () => {
-                const input = inputEl.value;
-                if (!input.trim()) { showToast('请输入 JSON', 'warning'); return; }
-                const result = formatJson(input);
-                if (result) {
-                    outputEl.value = result;
-                    showToast('格式化成功', 'success');
-                } else {
-                    showToast('JSON 格式错误', 'error');
-                }
-            };
-
-            minifyBtn.onclick = () => {
-                const input = inputEl.value;
-                if (!input.trim()) { showToast('请输入 JSON', 'warning'); return; }
-                const result = minifyJson(input);
-                if (result) {
-                    outputEl.value = result;
-                    showToast('压缩成功', 'success');
-                } else {
-                    showToast('JSON 格式错误', 'error');
-                }
-            };
-
-            copyBtn.onclick = () => {
-                const output = outputEl.value;
-                if (output) {
-                    navigator.clipboard.writeText(output);
-                    showToast('已复制到剪贴板', 'success');
-                }
-            };
         },
 
-        activate: (globalInput) => {
-            const inputEl = document.getElementById('fmt-input');
-            if (inputEl && !inputEl.value && globalInput) {
-                inputEl.value = globalInput;
+        activate: function(inputData) {
+            const inputEl = document.getElementById('fmtInput');
+            if (inputEl && !inputEl.value && inputData) {
+                inputEl.value = inputData;
             }
         },
 
-        deactivate: () => {}
+        doFormat: function() {
+            const inputEl = document.getElementById('fmtInput');
+            const outputEl = document.getElementById('fmtOutput');
+            if (!inputEl || !outputEl) return;
+            
+            const result = Utils.parseJSON(inputEl.value);
+            if (!result.success) {
+                showToast(result.error, 'error');
+                outputEl.textContent = '';
+                return;
+            }
+            
+            App.globalInput = inputEl.value;
+            outputEl.textContent = JSON.stringify(result.data, null, 2);
+            showToast('格式化成功', 'success');
+        },
+
+        minify: function() {
+            const inputEl = document.getElementById('fmtInput');
+            const outputEl = document.getElementById('fmtOutput');
+            if (!inputEl || !outputEl) return;
+            
+            const result = Utils.parseJSON(inputEl.value);
+            if (!result.success) {
+                showToast(result.error, 'error');
+                return;
+            }
+            
+            App.globalInput = inputEl.value;
+            outputEl.textContent = JSON.stringify(result.data);
+            showToast('压缩成功', 'success');
+        },
+
+        loadSample: function() {
+            const sample = {"name":"JSON Master","version":1.0,"features":["format","tree","compare"],"active":true};
+            const inputEl = document.getElementById('fmtInput');
+            if (inputEl) {
+                inputEl.value = JSON.stringify(sample, null, 2);
+                this.doFormat();
+            }
+        }
     };
 
-    if (window.AppInstance) {
-        window.AppInstance.register('format', FormatModule);
-    }
+    window.FormatModule = FormatModule;
+    if (window.App) App.register('format', FormatModule);
 })();
