@@ -1,123 +1,146 @@
-// 树视图模块
 (function() {
     const TreeModule = {
         name: '树视图',
         icon: 'fa-sitemap',
         
-        init: function(container) {
+        init: (container) => {
             container.innerHTML = `
-                <div class="flex flex-col h-full gap-4">
-                    <div class="flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-white">JSON 树形视图</h3>
+                <div class="flex flex-col h-full gap-2">
+                    <div class="flex justify-between items-center mb-2">
                         <div class="flex gap-2">
-                            <button id="tree-expand" class="btn-secondary"><i class="fas fa-plus"></i> 全部展开</button>
-                            <button id="tree-collapse" class="btn-secondary"><i class="fas fa-minus"></i> 全部收起</button>
+                            <button id="tree-expand" class="btn-secondary"><i class="fas fa-plus-square"></i> 全部展开</button>
+                            <button id="tree-collapse" class="btn-secondary"><i class="fas fa-minus-square"></i> 全部收起</button>
                         </div>
+                        <input type="text" id="tree-search" placeholder="搜索节点..." class="editor-box px-3 py-1 text-sm w-64"/>
                     </div>
-                    <div id="tree-container" class="flex-1 bg-gray-800 rounded-lg p-4 overflow-auto font-mono text-sm text-gray-300"></div>
+                    <div id="tree-container" class="editor-box flex-1 overflow-auto font-mono text-sm"></div>
                 </div>
             `;
 
-            document.getElementById('tree-expand').onclick = () => this.toggleAll(true);
-            document.getElementById('tree-collapse').onclick = () => this.toggleAll(false);
-        },
-
-        activate: function(input) {
-            this.input = input;
-            this.render();
-        },
-
-        render: function() {
-            const container = document.getElementById('tree-container');
-            if (!container) return;
+            document.getElementById('tree-expand').onclick = () => toggleAll(true);
+            document.getElementById('tree-collapse').onclick = () => toggleAll(false);
             
-            const parsed = JSONUtils.parse(this.input);
-            if (parsed === null) {
-                container.innerHTML = '<div class="text-red-400">无效的 JSON</div>';
-                return;
+            let searchMatches = [];
+            let currentMatch = -1;
+            
+            document.getElementById('tree-search').addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                if (!term) return;
+                const container = document.getElementById('tree-container');
+                const matches = container.querySelectorAll('[data-key*="' + term.toLowerCase() + '"], [data-value*="' + term.toLowerCase() + '"]');
+                matches.forEach(el => el.classList.remove('highlight-search'));
+                searchMatches = Array.from(matches);
+                if (searchMatches.length > 0) {
+                    currentMatch = 0;
+                    highlightMatch(0);
+                }
+            });
+
+            function highlightMatch(index) {
+                if (index >= 0 && index < searchMatches.length) {
+                    searchMatches[index].classList.add('highlight-search');
+                    searchMatches[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
 
+            function toggleAll(expand) {
+                const container = document.getElementById('tree-container');
+                const carets = container.querySelectorAll('.caret');
+                const children = container.querySelectorAll('.tree-children');
+                carets.forEach(c => c.classList.toggle('caret-down', expand));
+                children.forEach(c => c.classList.toggle('hidden-node', !expand));
+            }
+        },
+
+        activate: (globalInput) => {
+            const container = document.getElementById('tree-container');
+            if (!container || !globalInput.trim()) return;
+            
+            const result = safeJsonParse(globalInput);
+            if (result.error) {
+                container.innerHTML = `<div class="text-red-400 p-4">${result.error}</div>`;
+                return;
+            }
+            
             container.innerHTML = '';
-            const tree = this.buildTree(parsed, 'root');
+            const tree = buildTree(result.data, container);
             container.appendChild(tree);
         },
 
-        buildTree: function(data, key, isArrayItem = false) {
-            const node = document.createElement('div');
-            node.className = 'ml-4';
+        deactivate: () => {}
+    };
 
-            const isObject = data !== null && typeof data === 'object';
+    function buildTree(data, container, key = null, isLast = true) {
+        const node = document.createElement('div');
+        node.className = 'tree-node-item';
+        
+        if (key !== null) {
+            const keySpan = document.createElement('span');
+            keySpan.className = 'tree-key';
+            keySpan.textContent = `"${key}": `;
+            keySpan.dataset.key = key;
+            node.appendChild(keySpan);
+        }
+
+        if (data === null) {
+            const nullSpan = document.createElement('span');
+            nullSpan.className = 'tree-null';
+            nullSpan.textContent = 'null';
+            nullSpan.dataset.value = 'null';
+            node.appendChild(nullSpan);
+        } else if (typeof data === 'boolean') {
+            const boolSpan = document.createElement('span');
+            boolSpan.className = 'tree-boolean';
+            boolSpan.textContent = data.toString();
+            boolSpan.dataset.value = data.toString();
+            node.appendChild(boolSpan);
+        } else if (typeof data === 'number') {
+            const numSpan = document.createElement('span');
+            numSpan.className = 'tree-number';
+            numSpan.textContent = data.toString();
+            numSpan.dataset.value = data.toString();
+            node.appendChild(numSpan);
+        } else if (typeof data === 'string') {
+            const strSpan = document.createElement('span');
+            strSpan.className = 'tree-string';
+            strSpan.textContent = `"${data}"`;
+            strSpan.dataset.value = data;
+            node.appendChild(strSpan);
+        } else if (Array.isArray(data) || typeof data === 'object') {
             const isArray = Array.isArray(data);
-
-            if (!isObject) {
-                const valueSpan = document.createElement('span');
-                valueSpan.className = isArrayItem ? '' : 'text-green-400';
-                valueSpan.textContent = `${isArrayItem ? '' : key + ': '}${this.formatValue(data)}`;
-                node.appendChild(valueSpan);
-                return node;
-            }
-
-            const header = document.createElement('div');
-            header.className = 'flex items-center gap-2 cursor-pointer hover:bg-gray-700 p-1 rounded';
-            
-            const caret = document.createElement('i');
-            caret.className = 'fas fa-caret-down text-blue-400';
-            header.appendChild(caret);
-
-            const label = document.createElement('span');
-            label.className = 'text-yellow-400';
-            label.textContent = isArrayItem ? `[${key}]` : key;
-            header.appendChild(label);
-
-            const typeLabel = document.createElement('span');
-            typeLabel.className = 'text-gray-500 text-xs';
-            typeLabel.textContent = isArray ? `Array(${data.length})` : `Object{${Object.keys(data).length}}`;
-            header.appendChild(typeLabel);
-
-            node.appendChild(header);
+            const openBracket = document.createElement('span');
+            openBracket.textContent = isArray ? '[' : '{';
+            node.appendChild(openBracket);
 
             const children = document.createElement('div');
-            children.className = 'border-l border-gray-600 ml-2';
+            children.className = 'tree-children';
             
             const entries = isArray ? data.map((v, i) => [i, v]) : Object.entries(data);
-            for (const [k, v] of entries) {
-                children.appendChild(this.buildTree(v, k, isArray));
-            }
+            entries.forEach(([k, v], idx) => {
+                const childNode = buildTree(v, container, isArray ? null : k, idx === entries.length - 1);
+                children.appendChild(childNode);
+            });
 
             node.appendChild(children);
 
-            header.onclick = () => {
-                const isExpanded = caret.classList.contains('fa-caret-down');
-                caret.classList.toggle('fa-caret-down');
-                caret.classList.toggle('fa-caret-right');
-                children.classList.toggle('hidden');
+            const closeBracket = document.createElement('span');
+            closeBracket.textContent = isArray ? ']' : '}';
+            node.appendChild(closeBracket);
+
+            const caret = document.createElement('span');
+            caret.className = 'caret caret-down';
+            caret.innerHTML = '<i class="fas fa-caret-right"></i>';
+            caret.onclick = (e) => {
+                e.stopPropagation();
+                const isExpanded = caret.classList.contains('caret-down');
+                caret.classList.toggle('caret-down', !isExpanded);
+                children.classList.toggle('hidden-node', isExpanded);
             };
-
-            return node;
-        },
-
-        formatValue: function(val) {
-            if (val === null) return '<span class="text-red-400">null</span>';
-            if (typeof val === 'boolean') return `<span class="text-purple-400">${val}</span>`;
-            if (typeof val === 'number') return `<span class="text-blue-400">${val}</span>`;
-            if (typeof val === 'string') return `<span class="text-green-400">"${val}"</span>`;
-            return String(val);
-        },
-
-        toggleAll: function(expand) {
-            const container = document.getElementById('tree-container');
-            if (!container) return;
-            
-            const carets = container.querySelectorAll('.fa-caret-down, .fa-caret-right');
-            const children = container.querySelectorAll('.border-l');
-            
-            carets.forEach(caret => {
-                caret.classList.toggle('fa-caret-down', expand);
-                caret.classList.toggle('fa-caret-right', !expand);
-            });
-            children.forEach(child => child.classList.toggle('hidden', !expand));
+            node.insertBefore(caret, node.firstChild);
         }
-    };
+
+        return node;
+    }
 
     if (window.AppInstance) {
         window.AppInstance.register('tree', TreeModule);

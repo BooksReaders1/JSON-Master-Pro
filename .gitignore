@@ -5,7 +5,8 @@ node_modules/
 # Build artifacts
 dist/
 build/
-target/
+*.min.js
+*.bundle.js
 
 # Logs and temp files
 *.log
@@ -19,29 +20,50 @@ target/
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage.*
+.nox/
+.pytest_cache/
+.mypy_cache/
 
 # Java
 *.class
 *.jar
 *.war
 *.ear
-*.nar
+*.tar.gz
+target/
+.gradle/
+build/
 
 # C/C++
 *.o
 *.obj
 *.so
 *.a
-*.lib
-*.dll
 *.dylib
+*.dll
 *.exe
+*.out
 
 # Compression
 *.zip
@@ -62,30 +84,8 @@ __pycache__/
 *.Z
 *.lz
 *.lzo
-
-# Coverage
-coverage/
-htmlcov/
-.coverage
-
-# Testing
-.mypy_cache/
-.pytest_cache/
-.nyc_output/
-coverage/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Gradle
-.gradle/
-
-# Maven
-.mvn/wrapper/
-
-# Temporary files
-*.swp
-*.swo
-*~
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.zst
 ```

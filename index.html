@@ -8,52 +8,58 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'JetBrains Mono', 'Consolas', monospace; }
-        .editor-box {
-            @apply w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 resize-none;
-        }
-        .btn-primary {
-            @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2;
-        }
-        .btn-secondary {
-            @apply bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2;
-        }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { @apply bg-gray-800; }
-        ::-webkit-scrollbar-thumb { @apply bg-gray-600 rounded; }
-        ::-webkit-scrollbar-thumb:hover { @apply bg-gray-500; }
+        body { font-family: 'JetBrains Mono', 'Consolas', monospace; background-color: #1e1e1e; color: #d4d4d4; }
+        .editor-box { background-color: #252526; border: 1px solid #3e3e42; color: #d4d4d4; padding: 1rem; border-radius: 0.375rem; outline: none; font-family: inherit; font-size: 0.875rem; line-height: 1.5; resize: none; }
+        .editor-box:focus { border-color: #007fd4; }
+        .btn-primary { background-color: #0e639c; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; transition: background-color 0.2s; }
+        .btn-primary:hover { background-color: #1177bb; }
+        .btn-secondary { background-color: #3e3e42; color: #d4d4d4; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; transition: background-color 0.2s; }
+        .btn-secondary:hover { background-color: #4e4e52; }
+        .tab-btn { padding: 0.75rem 1.5rem; font-weight: 500; color: #9ca3af; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+        .tab-btn:hover { color: #ffffff; background-color: #2d2d30; }
+        .tab-btn.active { color: #ffffff; border-bottom-color: #007fd4; background-color: #2d2d30; }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 6px; color: white; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.3s ease; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.info { background-color: #007fd4; }
+        .toast.success { background-color: #4caf50; }
+        .toast.warning { background-color: #ff9800; }
+        .toast.error { background-color: #f44336; }
+        .tree-node { margin-left: 1.5rem; border-left: 1px solid #3e3e42; padding-left: 0.5rem; }
+        .tree-key { color: #9cdcfe; }
+        .tree-string { color: #ce9178; }
+        .tree-number { color: #b5cea8; }
+        .tree-boolean { color: #569cd6; }
+        .tree-null { color: #569cd6; }
+        .caret { cursor: pointer; user-select: none; display: inline-block; width: 1rem; color: #858585; transition: transform 0.2s; }
+        .caret-down { transform: rotate(90deg); }
+        .hidden-node { display: none; }
+        .diff-line { padding: 2px 8px; font-family: monospace; }
+        .diff-add { background-color: rgba(76, 175, 80, 0.2); color: #81c784; }
+        .diff-remove { background-color: rgba(244, 67, 54, 0.2); color: #e57373; }
+        .diff-modify { background-color: rgba(255, 152, 0, 0.2); color: #ffb74d; }
+        .diff-container { height: calc(100vh - 200px); overflow-y: auto; }
+        .highlight-search { background-color: #613214; color: #ffab00; }
+        .split-pane { display: flex; gap: 1rem; height: 100%; }
+        .split-pane > div { flex: 1; display: flex; flex-direction: column; }
     </style>
 </head>
-<body class="bg-gray-900 min-h-screen flex flex-col">
-    <!-- 顶部标题 -->
-    <header class="bg-gray-800 border-b border-gray-700 px-6 py-4">
-        <h1 class="text-2xl font-bold text-white flex items-center gap-3">
-            <i class="fas fa-code text-blue-400"></i>
-            JSON Master Pro
-        </h1>
-    </header>
-
-    <!-- 主内容区 -->
-    <main class="flex-1 flex flex-col p-6 gap-6 min-h-0">
-        <!-- 全局输入框 -->
-        <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-gray-400">全局 JSON 输入 (所有模块同步)</label>
-            <textarea id="global-json-input" class="editor-box h-32" placeholder="在此粘贴或输入 JSON 数据..."></textarea>
+<body class="h-screen flex flex-col overflow-hidden">
+    <header class="bg-[#2d2d30] border-b border-[#3e3e42] px-6 py-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-clipboard text-blue-500 text-xl"></i>
+            <h1 class="text-xl font-bold text-white tracking-wide">JSON Master Pro</h1>
         </div>
-
-        <!-- Tab 导航容器 (动态生成) -->
-        <div id="tabs-container" class="flex gap-2 border-b border-gray-700 overflow-x-auto"></div>
-
-        <!-- 模块内容容器 (动态生成) -->
-        <div id="modules-container" class="flex-1 flex flex-col min-h-0"></div>
-    </main>
-
-    <!-- 核心框架 -->
+        <div class="text-xs text-gray-500">Pure Frontend • No Data Upload</div>
+    </header>
+    <div id="tabs-wrapper" class="bg-[#252526] border-b border-[#3e3e42] px-6 flex gap-2 overflow-x-auto shrink-0"></div>
+    <main id="main-container" class="flex-1 p-6 overflow-hidden relative bg-[#1e1e1e]"></main>
+    <div id="toast-container"></div>
     <script src="js/core/toast.js"></script>
     <script src="js/core/utils.js"></script>
     <script src="js/core/app.js"></script>
-
-    <!-- 功能模块 (按需添加，自动注册) -->
+    <script src="https://cdn.jsdelivr.net/npm/@faker-js/faker@8/dist/faker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsonpath-plus@7.2.0/dist/index-browser-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jmespath@0.16.0/jmespath.min.js"></script>
     <script src="js/modules/format.js"></script>
     <script src="js/modules/tree.js"></script>
     <script src="js/modules/compare.js"></script>
@@ -63,10 +69,5 @@
     <script src="js/modules/mock.js"></script>
     <script src="js/modules/query.js"></script>
     <script src="js/modules/analyze.js"></script>
-
-    <!-- 外部库 (Mock 和查询功能需要) -->
-    <script src="https://cdn.jsdelivr.net/npm/@faker-js/faker@8/dist/faker.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsonpath-plus@7.2.0/dist/index-browser-min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jmespath@0.16.0/jmespath.min.js"></script>
 </body>
 </html>
