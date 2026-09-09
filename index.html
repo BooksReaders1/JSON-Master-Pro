@@ -3,20 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON Master Pro - 专业 JSON 处理工具</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90' font-family='Arial'>📋</text></svg>">
-    
-    <!-- Tailwind CSS -->
+    <title>JSON Master Pro - @JsonProperty 条件输出</title>
+    <link rel="icon" href="image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📋</text></svg>">
+    <!-- 改动: @JsonProperty 恢复条件输出 —— 仅当 JSON 键名 ≠ Bean 字段名时才添加注解与 import;
+         其余保持: 树视图含输入、六处输入全局同步、Lombok + @Schema、类型严格对应等。 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/jetbrains-mono@5.0.18/index.min.css" rel="stylesheet">
-    
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/jsonpath-plus@9.0.0/dist/index-browser-umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jmespath@0.16.0/jmespath.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@faker-js/faker@8.4.1/dist/faker.min.js"></script>
-    
-    <!-- Custom Styles -->
+
     <style>
         body { font-family: 'JetBrains Mono', monospace; background-color: #0f172a; color: #e2e8f0; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -81,14 +75,12 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <!-- Loading Overlay -->
     <div id="loadingOverlay" style="display:none;" class="fixed inset-0 z-[100] flex-col items-center justify-center gap-4 bg-slate-900/80 backdrop-blur-sm">
         <div class="loader-ring"></div>
         <div id="loadingText" class="text-sm text-slate-200 font-bold tracking-wider">处理中...</div>
         <div class="text-[10px] text-slate-500">纯前端计算 · 请稍候</div>
     </div>
 
-    <!-- Header -->
     <header class="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-700 shadow-md z-20">
         <div class="flex items-center gap-3">
             <i class="fa-solid fa-layer-group text-blue-500 text-2xl"></i>
@@ -100,9 +92,7 @@
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="flex-1 flex flex-col overflow-hidden relative">
-        <!-- Tab Navigation -->
         <div class="flex border-b border-slate-700 bg-slate-900 px-6 overflow-x-auto">
             <button id="tabFormat" onclick="switchTab('format')" class="px-5 py-3 text-sm text-slate-300 hover:text-white tab-active transition whitespace-nowrap">格式化</button>
             <button id="tabTree" onclick="switchTab('tree')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">树视图</button>
@@ -110,9 +100,6 @@
             <button id="tabConvert" onclick="switchTab('convert')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">JSON ⇄ String</button>
             <button id="tabJava" onclick="switchTab('java')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">JSON ⇄ Java Map</button>
             <button id="tabBean" onclick="switchTab('bean')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap">JSON → Java Bean</button>
-            <button id="tabMock" onclick="switchTab('mock')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap"><i class="fa-solid fa-wand-magic mr-1"></i>Mock 数据</button>
-            <button id="tabQuery" onclick="switchTab('query')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap"><i class="fa-solid fa-magnifying-glass mr-1"></i>查询过滤</button>
-            <button id="tabAnalyze" onclick="switchTab('analyze')" class="px-5 py-3 text-sm text-slate-300 hover:text-white transition whitespace-nowrap"><i class="fa-solid fa-chart-simple mr-1"></i>性能分析</button>
         </div>
 
         <!-- VIEW 1: 格式化 -->
@@ -150,7 +137,7 @@
             </section>
         </div>
 
-        <!-- VIEW 2: 树视图 -->
+        <!-- VIEW 2: 树视图 (含输入) -->
         <div id="viewTree" class="hidden flex-1 flex flex-col md:flex-row overflow-hidden">
             <section class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-4 gap-3">
                 <div class="flex justify-between items-center">
@@ -158,16 +145,25 @@
                     <span class="sync-badge"><i class="fa-solid fa-arrows-rotate"></i>与各 Tab 输入同步</span>
                 </div>
                 <textarea id="treeInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 rounded-lg border border-slate-700 focus:border-blue-500 outline-none text-sm leading-relaxed" placeholder="粘贴 JSON (自动同步到各 Tab)..."></textarea>
+                <div class="text-[10px] text-slate-500 bg-slate-800/50 p-2 rounded-lg border border-slate-700/50">
+                    <i class="fa-solid fa-circle-info mr-1"></i>在此输入会实时同步到 格式化 / JSON 对比(左) / JSON ⇄ String / JSON ⇄ Java Map / JSON → Java Bean
+                </div>
             </section>
             <section class="w-full md:w-1/2 flex flex-col p-4 gap-2 bg-slate-900/50">
                 <div class="flex justify-between items-center gap-2 flex-wrap">
-                    <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">交互式树视图</label>
-                    <div class="flex items-center gap-2">
+                    <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">交互式树视图 <span class="normal-case text-slate-500">(点击 ▼ 折叠/展开)</span></label>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <div class="flex items-center bg-slate-900 border border-slate-600 rounded overflow-hidden">
+                            <input type="text" id="treeSearchInput" onkeyup="handleTreeSearch(event)" placeholder="搜索(含折叠区)..." class="bg-transparent text-xs py-1.5 pl-2 pr-1 w-32 focus:outline-none text-slate-300">
+                            <button onclick="navigateTreeSearch(-1)" class="px-2 py-1.5 hover:bg-slate-700 text-slate-400 border-l border-slate-700" title="上一个"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
+                            <button onclick="navigateTreeSearch(1)" class="px-2 py-1.5 hover:bg-slate-700 text-slate-400 border-l border-slate-700" title="下一个"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
+                            <span id="treeSearchCount" class="text-[10px] text-slate-500 px-2 hidden">0/0</span>
+                        </div>
                         <button onclick="doToggleAll(true)" class="text-[10px] text-slate-400 hover:text-white border border-slate-700 px-2 py-1 rounded">全部展开</button>
                         <button onclick="doToggleAll(false)" class="text-[10px] text-slate-400 hover:text-white border border-slate-700 px-2 py-1 rounded">全部折叠</button>
                     </div>
                 </div>
-                <div id="treeContainer" class="flex-1 overflow-auto bg-slate-800 rounded-lg border border-slate-700 p-4 relative">
+                <div id="treeContainer" class="flex-1 overflow-auto bg-slate-800 rounded-lg border border-slate-700 p-4 relative shadow-inner">
                     <div id="treeOutput" class="json-tree text-sm"></div>
                     <div id="errorMsg" class="hidden absolute inset-0 flex items-center justify-center bg-slate-900/95 text-red-400 font-bold p-4 text-center z-10">
                         <div><i class="fa-solid fa-circle-exclamation text-3xl mb-2"></i><p id="errorText"></p></div>
@@ -176,244 +172,844 @@
             </section>
         </div>
 
-        <!-- VIEW 3: JSON 对比 -->
+        <!-- VIEW 3: 对比 -->
         <div id="viewCompare" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
-            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2">
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2 flex-wrap">
                 <div class="flex items-center gap-2">
                     <button onclick="doRunDiff()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-bolt mr-1"></i>开始对比</button>
-                    <span class="text-[10px] text-slate-500">左侧已全局同步 · 右侧粘贴新 JSON 后点击对比</span>
+                    <button id="btnEdit" onclick="setDiffMode(false)" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded hidden"><i class="fa-solid fa-pen mr-1"></i>返回编辑</button>
+                    <span id="cmpHint" class="text-[10px] text-slate-500 ml-2">左侧输入已全局同步 · 在右侧粘贴新 JSON 后点击"开始对比"</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="statsLeft" class="text-[11px] text-red-400/80"></span>
+                    <span id="statsRight" class="text-[11px] text-green-400/80"></span>
+                    <div class="flex items-center bg-slate-900 border border-slate-600 rounded overflow-hidden">
+                        <button onclick="navigateDiff(-1)" class="px-2 py-1 hover:bg-slate-700 text-slate-400"><i class="fa-solid fa-chevron-up text-[10px]"></i></button>
+                        <button onclick="navigateDiff(1)" class="px-2 py-1 hover:bg-slate-700 text-slate-400 border-l border-slate-700"><i class="fa-solid fa-chevron-down text-[10px]"></i></button>
+                        <span id="diffNavCount" class="text-[10px] text-slate-500 px-1">0/0</span>
+                    </div>
                 </div>
             </div>
-            <div class="flex-1 flex overflow-hidden">
+            <div class="flex-1 flex overflow-hidden relative">
                 <div class="w-1/2 flex flex-col border-r border-slate-700">
-                    <div class="bg-slate-800 px-4 py-1.5 text-xs text-slate-400">旧版本 (左·全局同步)</div>
-                    <textarea id="compareLeft" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 outline-none text-sm" placeholder="已全局同步..."></textarea>
+                    <div class="bg-slate-800 px-4 py-1.5 text-xs text-slate-400 flex justify-between z-10">
+                        <span>旧版本 (左 · 全局同步)</span>
+                        <button onclick="syncLeft()" class="text-[10px] text-slate-500 hover:text-blue-400"><i class="fa-solid fa-arrows-rotate mr-1"></i>重新同步主输入</button>
+                    </div>
+                    <div class="flex-1 relative overflow-hidden">
+                        <textarea id="compareLeft" class="editor-layer" spellcheck="false" placeholder="粘贴旧 JSON (已全局同步)..."></textarea>
+                        <div id="diffLeftContainer" class="diff-layer hidden"><div id="diffLeftContent" class="diff-inner text-xs"></div></div>
+                    </div>
                 </div>
                 <div class="w-1/2 flex flex-col">
-                    <div class="bg-slate-800 px-4 py-1.5 text-xs text-slate-400">新版本 (右)</div>
-                    <textarea id="compareRight" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 outline-none text-sm" placeholder="粘贴新 JSON..."></textarea>
+                    <div class="bg-slate-800 px-4 py-1.5 text-xs text-slate-400 flex justify-between z-10">
+                        <span>新版本 (右)</span>
+                        <button onclick="syncRight()" class="text-[10px] text-slate-500 hover:text-blue-400"><i class="fa-solid fa-arrow-up mr-1"></i>回写到主输入(并全局同步)</button>
+                    </div>
+                    <div class="flex-1 relative overflow-hidden">
+                        <textarea id="compareRight" class="editor-layer" spellcheck="false" placeholder="粘贴新 JSON..."></textarea>
+                        <div id="diffRightContainer" class="diff-layer hidden"><div id="diffRightContent" class="diff-inner text-xs"></div></div>
+                    </div>
                 </div>
+                <div class="absolute left-1/2 top-0 bottom-0 w-1 -ml-0.5 bg-slate-700 z-20"></div>
             </div>
         </div>
 
         <!-- VIEW 4: JSON ⇄ String -->
         <div id="viewConvert" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
-            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2">
-                <div class="flex items-center gap-2">
-                    <button onclick="setConvDir('j2s')" class="px-3 py-1.5 text-xs bg-slate-700 text-slate-300 dir-active rounded">JSON → String</button>
-                    <button onclick="setConvDir('s2j')" class="px-3 py-1.5 text-xs bg-slate-700 text-slate-300 border-l border-slate-600 rounded">String → JSON</button>
-                    <button onclick="doConvert()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-rotate mr-1"></i>转换</button>
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex rounded overflow-hidden border border-slate-600">
+                        <button id="dirJ2S" onclick="setConvDir('j2s')" class="px-3 py-1.5 text-xs bg-slate-700 text-slate-300 dir-active transition">JSON → String</button>
+                        <button id="dirS2J" onclick="setConvDir('s2j')" class="px-3 py-1.5 text-xs bg-slate-700 text-slate-300 border-l border-slate-600 transition">String → JSON</button>
+                    </div>
+                    <button onclick="doConvert(true)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-rotate mr-1"></i>转换</button>
+                    <button onclick="swapConv()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded"><i class="fa-solid fa-right-left mr-1"></i>交换</button>
+                    <button onclick="loadConvSample()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">示例</button>
+                    <span class="sync-badge"><i class="fa-solid fa-arrows-rotate"></i>输入已全局同步</span>
+                </div>
+                <div class="flex items-center gap-3 text-[11px] text-slate-400">
+                    <span id="optGroupJ2S" class="flex items-center gap-3">
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="optQuotes" checked onchange="doConvert()"> 保留外层引号</label>
+                    </span>
+                    <span id="optGroupS2J" class="hidden items-center gap-3">
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="optDeep" checked onchange="doConvert()"> 循环解套</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="optPretty" checked onchange="doConvert()"> 美化输出</label>
+                    </span>
+                    <button onclick="copyConvOutput()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"><i class="fa-solid fa-copy mr-1"></i>复制</button>
                 </div>
             </div>
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
                 <div class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-3 gap-2">
-                    <label class="text-xs text-slate-400 font-bold">输入 (全局同步)</label>
-                    <textarea id="convInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 outline-none text-xs" spellcheck="false"></textarea>
+                    <label class="text-xs text-slate-400 font-bold" id="convInLabel">输入: JSON 对象/数组文本 (全局同步)</label>
+                    <textarea id="convInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 focus:border-blue-500 outline-none text-xs leading-relaxed" spellcheck="false" placeholder="在此粘贴内容 (自动同步到各 Tab)..."></textarea>
                 </div>
-                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2">
-                    <label class="text-xs text-slate-400 font-bold">输出</label>
-                    <textarea id="convOutput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 outline-none text-xs" readonly></textarea>
+                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2 relative">
+                    <label class="text-xs text-slate-400 font-bold" id="convOutLabel">输出: 转义后的字符串</label>
+                    <textarea id="convOutput" readonly class="flex-1 w-full bg-slate-800/60 text-emerald-200/90 p-3 rounded-lg border border-slate-700 outline-none text-xs leading-relaxed" placeholder="转换结果..."></textarea>
+                    <div id="convError" class="hidden absolute left-3 right-3 bottom-3 bg-red-900/80 border border-red-500 text-red-200 text-xs rounded px-3 py-2 z-10">
+                        <i class="fa-solid fa-circle-exclamation mr-1"></i><span id="convErrorText"></span>
+                    </div>
                 </div>
+            </div>
+            <div class="px-4 py-1 text-[10px] text-slate-500 border-t border-slate-700 flex justify-between">
+                <span id="convStats">输入 0 字符 → 输出 0 字符</span>
+                <span id="convTip">JSON → String: 转义为可嵌入代码的字符串字面量</span>
             </div>
         </div>
 
         <!-- VIEW 5: JSON ⇄ Java Map -->
         <div id="viewJava" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
-            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2">
-                <button onclick="doJavaConvert()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-code mr-1"></i>转换</button>
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex rounded overflow-hidden border border-slate-600">
+                        <button id="jmDirJ2M" onclick="setJmDir('j2m')" class="px-3 py-1.5 text-xs bg-slate-700 text-slate-300 dir-active transition">JSON → Java Map</button>
+                        <button id="jmDirM2J" onclick="setJmDir('m2j')" class="px-3 py-1.5 text-xs bg-slate-700 text-slate-300 border-l border-slate-600 transition">Java Map → JSON</button>
+                    </div>
+                    <button onclick="doJavaConvert(true)" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-rotate mr-1"></i>转换</button>
+                    <button onclick="swapJm()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded"><i class="fa-solid fa-right-left mr-1"></i>交换</button>
+                    <button onclick="loadJmSample()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">示例</button>
+                    <span class="sync-badge"><i class="fa-solid fa-arrows-rotate"></i>输入已全局同步</span>
+                </div>
+                <div class="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+                    <span id="jmOptJ2M" class="flex items-center gap-3">
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="jmUseVar" onchange="doJavaConvert()"> var 关键字</label>
+                        <label class="flex items-center gap-1">根变量名
+                            <input type="text" id="jmRootName" value="map" oninput="doJavaConvert()" class="bg-slate-900 border border-slate-600 rounded px-1 py-0.5 w-20 text-xs text-slate-200 outline-none focus:border-blue-500">
+                        </label>
+                    </span>
+                    <button onclick="copyJmOutput()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"><i class="fa-solid fa-copy mr-1"></i>复制</button>
+                </div>
             </div>
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
                 <div class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-3 gap-2">
-                    <label class="text-xs text-slate-400 font-bold">JSON (全局同步)</label>
-                    <textarea id="javaInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 outline-none text-xs"></textarea>
+                    <label class="text-xs text-slate-400 font-bold" id="jmInLabel">输入: JSON 对象/数组 (全局同步)</label>
+                    <textarea id="jmInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 focus:border-blue-500 outline-none text-xs leading-relaxed" spellcheck="false" placeholder="粘贴 JSON 或 Java Map 代码 (自动同步到各 Tab)..."></textarea>
                 </div>
-                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2">
-                    <label class="text-xs text-slate-400 font-bold">Java Map 代码</label>
-                    <textarea id="javaOutput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 outline-none text-xs" readonly></textarea>
+                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2 relative">
+                    <label class="text-xs text-slate-400 font-bold" id="jmOutLabel">输出: Java Map 初始化代码 (HashMap + 小驼峰变量)</label>
+                    <textarea id="jmOutput" readonly class="flex-1 w-full bg-slate-800/60 text-amber-200/90 p-3 rounded-lg border border-slate-700 outline-none text-xs leading-relaxed" placeholder="转换结果..."></textarea>
+                    <div id="jmError" class="hidden absolute left-3 right-3 bottom-3 max-h-1/2 overflow-auto bg-red-900/80 border border-red-500 text-red-200 text-xs rounded px-3 py-2 z-10 whitespace-pre-wrap">
+                        <i class="fa-solid fa-circle-exclamation mr-1"></i><span id="jmErrorText"></span>
+                    </div>
                 </div>
+            </div>
+            <div class="px-4 py-1 text-[10px] text-slate-500 border-t border-slate-700 flex justify-between">
+                <span id="jmStats">输入 0 字符 → 输出 0 字符</span>
+                <span id="jmTip">HashMap + ArrayList · 嵌套子变量小驼峰命名 · 往返兼容</span>
             </div>
         </div>
 
         <!-- VIEW 6: JSON → Java Bean -->
         <div id="viewBean" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
-            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2">
-                <button onclick="doBeanConvert()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-file-code mr-1"></i>生成 Bean</button>
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <button onclick="doBeanConvert(true)" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>生成 Bean</button>
+                    <button onclick="loadBeanSample()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">示例</button>
+                    <label class="flex items-center gap-1 text-[11px] text-slate-400">根类名
+                        <input type="text" id="beanRootName" value="Root" oninput="doBeanConvert()" class="bg-slate-900 border border-slate-600 rounded px-1 py-0.5 w-20 text-xs text-slate-200 outline-none focus:border-blue-500">
+                    </label>
+                    <label class="flex items-center gap-1 text-[11px] text-slate-400">后缀
+                        <input type="text" id="beanSuffix" value="DTO" oninput="doBeanConvert()" class="bg-slate-900 border border-slate-600 rounded px-1 py-0.5 w-16 text-xs text-slate-200 outline-none focus:border-blue-500">
+                    </label>
+                    <span class="sync-badge"><i class="fa-solid fa-arrows-rotate"></i>输入已全局同步</span>
+                </div>
+                <div class="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="beanBuilder" checked onchange="doBeanConvert()"> @Builder</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="beanAllArgs" checked onchange="doBeanConvert()"> @AllArgsConstructor</label>
+                    <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="beanBigDec" onchange="doBeanConvert()"> 小数→BigDecimal</label>
+                    <label class="flex items-center gap-1 cursor-pointer" title="仅当 JSON 键名与 Bean 字段名不一致时添加"><input type="checkbox" id="beanJsonProp" checked onchange="doBeanConvert()"> @JsonProperty(键名≠字段名时)</label>
+                    <button onclick="copyBeanOutput()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"><i class="fa-solid fa-copy mr-1"></i>复制</button>
+                </div>
             </div>
             <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
                 <div class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-3 gap-2">
-                    <label class="text-xs text-slate-400 font-bold">JSON (全局同步)</label>
-                    <textarea id="beanInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 outline-none text-xs"></textarea>
+                    <label class="text-xs text-slate-400 font-bold">输入: JSON 对象 / 对象数组 (全局同步)</label>
+                    <textarea id="beanInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 focus:border-blue-500 outline-none text-xs leading-relaxed" spellcheck="false" placeholder="粘贴 JSON (自动同步到各 Tab)..."></textarea>
                 </div>
-                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2">
-                    <label class="text-xs text-slate-400 font-bold">Java Bean 代码</label>
-                    <textarea id="beanOutput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 outline-none text-xs" readonly></textarea>
-                </div>
-            </div>
-        </div>
-
-        <!-- VIEW 7: Mock 数据生成 -->
-        <div id="viewMock" class="hidden flex-1 flex flex-col md:flex-row overflow-hidden">
-            <section class="w-full md:w-1/2 flex flex-col border-r border-slate-700 p-4 gap-3">
-                <div class="flex justify-between items-center">
-                    <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">JSON 模板或 Java Bean</label>
-                    <button onclick="loadMockSample()" class="text-xs text-blue-400 hover:text-blue-300">加载示例</button>
-                </div>
-                <textarea id="mockInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 rounded-lg border border-slate-700 focus:border-blue-500 outline-none text-sm" placeholder="粘贴 JSON 模板或 Java Bean 代码..."></textarea>
-                <div class="flex flex-wrap gap-3 items-center bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-                    <label class="text-xs text-slate-400">生成数量：
-                        <input type="number" id="mockCount" value="1" min="1" max="100" class="ml-2 w-16 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs">
-                    </label>
-                    <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
-                        <input type="checkbox" id="mockUseFaker" checked>
-                        <span>使用 Faker.js 生成真实数据</span>
-                    </label>
-                    <button onclick="doGenerateMock()" class="ml-auto px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs rounded font-bold"><i class="fa-solid fa-wand-magic mr-1"></i>生成 Mock 数据</button>
-                </div>
-            </section>
-            <section class="w-full md:w-1/2 flex flex-col p-4 gap-2 bg-slate-900/50">
-                <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">生成的 Mock 数据</label>
-                <textarea id="mockOutput" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 rounded-lg border border-slate-700 outline-none text-sm" readonly placeholder="点击生成按钮查看结果..."></textarea>
-            </section>
-        </div>
-
-        <!-- VIEW 8: JSON 查询过滤 -->
-        <div id="viewQuery" class="hidden flex-1 flex flex-col md:flex-row overflow-hidden">
-            <section class="w-full md:w-1/3 flex flex-col border-r border-slate-700 p-4 gap-3">
-                <div class="flex justify-between items-center">
-                    <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">JSON 数据</label>
-                    <button onclick="loadQuerySample()" class="text-xs text-blue-400 hover:text-blue-300">加载示例</button>
-                </div>
-                <textarea id="queryInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 rounded-lg border border-slate-700 focus:border-blue-500 outline-none text-sm" placeholder="粘贴 JSON 数据..."></textarea>
-            </section>
-            <section class="w-full md:w-1/3 flex flex-col border-r border-slate-700 p-4 gap-3">
-                <div class="flex justify-between items-center">
-                    <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">查询表达式</label>
-                    <select id="queryMode" class="text-xs bg-slate-700 border border-slate-600 rounded px-2 py-1">
-                        <option value="jsonpath">JSONPath</option>
-                        <option value="jmespath">JMESPath</option>
-                    </select>
-                </div>
-                <div class="flex gap-2">
-                    <input type="text" id="queryExpression" class="flex-1 bg-slate-800 text-slate-200 p-2 rounded-lg border border-slate-700 outline-none text-xs" placeholder="输入查询表达式...">
-                    <button onclick="insertQueryExample()" class="px-2 py-2 bg-slate-700 hover:bg-slate-600 rounded" title="插入示例"><i class="fa-solid fa-lightbulb text-xs"></i></button>
-                </div>
-                <button onclick="doQuery()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs rounded font-bold"><i class="fa-solid fa-magnifying-glass mr-1"></i>执行查询</button>
-                <div id="queryStats" class="text-[10px] text-slate-500"></div>
-            </section>
-            <section class="w-full md:w-1/3 flex flex-col p-4 gap-2 bg-slate-900/50">
-                <label class="text-xs uppercase tracking-wider text-slate-400 font-semibold">查询结果</label>
-                <textarea id="queryOutput" class="flex-1 w-full bg-slate-800 text-slate-200 p-4 rounded-lg border border-slate-700 outline-none text-sm" readonly placeholder="查询结果将显示在这里..."></textarea>
-            </section>
-        </div>
-
-        <!-- VIEW 9: 性能分析 -->
-        <div id="viewAnalyze" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-900">
-            <div class="flex items-center justify-between px-4 py-2 bg-slate-800/70 border-b border-slate-700 gap-2">
-                <div class="flex items-center gap-2">
-                    <button onclick="doAnalyze()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded font-bold"><i class="fa-solid fa-chart-bar mr-1"></i>分析</button>
-                    <button onclick="loadAnalyzeSample()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded">加载示例</button>
+                <div class="w-full md:w-1/2 flex flex-col p-3 gap-2 relative">
+                    <label class="text-xs text-slate-400 font-bold">输出: Java Bean 源码 (每个类一个文件块)</label>
+                    <textarea id="beanOutput" readonly class="flex-1 w-full bg-slate-800/60 text-amber-200/90 p-3 rounded-lg border border-slate-700 outline-none text-xs leading-relaxed" placeholder="生成结果..."></textarea>
+                    <div id="beanError" class="hidden absolute left-3 right-3 bottom-3 max-h-1/2 overflow-auto bg-red-900/80 border border-red-500 text-red-200 text-xs rounded px-3 py-2 z-10 whitespace-pre-wrap">
+                        <i class="fa-solid fa-circle-exclamation mr-1"></i><span id="beanErrorText"></span>
+                    </div>
                 </div>
             </div>
-            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
-                <div class="w-full md:w-1/3 flex flex-col border-r border-slate-700 p-3 gap-2">
-                    <label class="text-xs text-slate-400 font-bold">JSON 数据 (全局同步)</label>
-                    <textarea id="analyzeInput" class="flex-1 w-full bg-slate-800 text-slate-200 p-3 rounded-lg border border-slate-700 outline-none text-xs"></textarea>
-                </div>
-                <div class="w-full md:w-2/3 flex flex-col p-3 gap-2 overflow-auto">
-                    <label class="text-xs text-slate-400 font-bold">分析结果</label>
-                    <div id="analyzeResult" class="flex-1"></div>
-                </div>
+            <div class="px-4 py-1 text-[10px] text-slate-500 border-t border-slate-700 flex justify-between">
+                <span id="beanStats">输入 0 字符 → 0 个类</span>
+                <span id="beanTip">Lombok + @Schema · 禁止 Map/Object · 类型严格对应 · @JsonProperty 仅在键名≠字段名时添加</span>
             </div>
         </div>
     </main>
 
-    <!-- Core Modules -->
-    <script src="js/core/toast.js"></script>
-    <script src="js/core/utils.js"></script>
-    <script src="js/core/app.js"></script>
-    
-    <!-- Feature Modules -->
-    <script src="js/modules/format.js"></script>
-    <script src="js/modules/mock.js"></script>
-    <script src="js/modules/query.js"></script>
-    <script src="js/modules/analyze.js"></script>
-    
-    <!-- Placeholder modules for existing features (to be implemented) -->
+    <footer class="bg-slate-900 border-t border-slate-700 px-6 py-1 text-[10px] text-slate-500 flex justify-between">
+        <span id="statusBar">就绪</span>
+        <span>Pure Frontend • Conditional @JsonProperty</span>
+    </footer>
+
     <script>
-        // Tree Module Placeholder
-        const TreeModule = {
-            init() { console.log('[TreeModule] Initialized'); },
-            doToggleAll() { showToast('树视图功能待实现', 'info'); },
-            onActivate() {},
-            onSync() {}
+        // ================= State =================
+        let currentObj = null;
+        let currentTab = 'format';
+        let fmtTerm = '', fmtMatches = [], fmtIdx = -1;
+        let treeMatches = [], treeIdx = -1;
+        let diffRows = [], diffIndices = [], currentDiffIdx = -1;
+        let isManualScrolling = false, isInputSyncing = false, diffMode = false;
+        let convDir = 'j2s', jmDir = 'j2m';
+        const AUTO_COLLAPSE_DEPTH = 4, AUTO_COLLAPSE_SIZE = 100;
+        const SYNC_IDS = ['inputJson', 'treeInput', 'compareLeft', 'convInput', 'jmInput', 'beanInput'];
+
+        const els = {
+            input: document.getElementById('inputJson'),
+            fmtOutput: document.getElementById('fmtOutput'), fmtContainer: document.getElementById('fmtContainer'),
+            fmtError: document.getElementById('fmtError'), fmtErrorText: document.getElementById('fmtErrorText'),
+            fmtSearchInput: document.getElementById('fmtSearchInput'), fmtSearchCount: document.getElementById('fmtSearchCount'),
+            tree: document.getElementById('treeOutput'), treeCont: document.getElementById('treeContainer'),
+            error: document.getElementById('errorMsg'), errorText: document.getElementById('errorText'),
+            treeSearchInput: document.getElementById('treeSearchInput'), treeSearchCount: document.getElementById('treeSearchCount'),
+            cmpLeft: document.getElementById('compareLeft'), cmpRight: document.getElementById('compareRight'),
+            diffLeftCont: document.getElementById('diffLeftContainer'), diffRightCont: document.getElementById('diffRightContainer'),
+            diffLeft: document.getElementById('diffLeftContent'), diffRight: document.getElementById('diffRightContent'),
+            statsLeft: document.getElementById('statsLeft'), statsRight: document.getElementById('statsRight'),
+            diffNavCount: document.getElementById('diffNavCount'), btnEdit: document.getElementById('btnEdit'), cmpHint: document.getElementById('cmpHint'),
+            convInput: document.getElementById('convInput'), convOutput: document.getElementById('convOutput'),
+            convError: document.getElementById('convError'), convErrorText: document.getElementById('convErrorText'),
+            convStats: document.getElementById('convStats'), convTip: document.getElementById('convTip'),
+            convInLabel: document.getElementById('convInLabel'), convOutLabel: document.getElementById('convOutLabel'),
+            jmInput: document.getElementById('jmInput'), jmOutput: document.getElementById('jmOutput'),
+            jmError: document.getElementById('jmError'), jmErrorText: document.getElementById('jmErrorText'),
+            jmStats: document.getElementById('jmStats'), jmTip: document.getElementById('jmTip'),
+            jmInLabel: document.getElementById('jmInLabel'), jmOutLabel: document.getElementById('jmOutLabel'),
+            beanInput: document.getElementById('beanInput'), beanOutput: document.getElementById('beanOutput'),
+            beanError: document.getElementById('beanError'), beanErrorText: document.getElementById('beanErrorText'),
+            beanStats: document.getElementById('beanStats'),
+            statusBar: document.getElementById('statusBar'), overlay: document.getElementById('loadingOverlay'),
+            overlayText: document.getElementById('loadingText')
         };
-        App.registerModule('tree', TreeModule);
-        window.doToggleAll = () => TreeModule.doToggleAll();
-        
-        // Compare Module Placeholder
-        const CompareModule = {
-            init() { console.log('[CompareModule] Initialized'); },
-            doRunDiff() { showToast('对比功能待实现', 'info'); },
-            onActivate() {},
-            onSync() {}
-        };
-        App.registerModule('compare', CompareModule);
-        window.doRunDiff = () => CompareModule.doRunDiff();
-        
-        // Convert Module Placeholder
-        const ConvertModule = {
-            currentDir: 'j2s',
-            init() { console.log('[ConvertModule] Initialized'); },
-            setConvDir(dir) { this.currentDir = dir; showToast('方向切换：' + dir, 'info'); },
-            doConvert() { showToast('转换功能待实现', 'info'); },
-            getContentForCopy() { return document.getElementById('convOutput')?.value || ''; },
-            onActivate() {},
-            onSync() {}
-        };
-        App.registerModule('convert', ConvertModule);
-        window.setConvDir = (dir) => ConvertModule.setConvDir(dir);
-        window.doConvert = () => ConvertModule.doConvert();
-        
-        // Java Module Placeholder
-        const JavaModule = {
-            init() { console.log('[JavaModule] Initialized'); },
-            doJavaConvert() { showToast('Java Map 转换待实现', 'info'); },
-            getContentForCopy() { return document.getElementById('javaOutput')?.value || ''; },
-            onActivate() {},
-            onSync() {}
-        };
-        App.registerModule('java', JavaModule);
-        window.doJavaConvert = () => JavaModule.doJavaConvert();
-        
-        // Bean Module Placeholder
-        const BeanModule = {
-            init() { console.log('[BeanModule] Initialized'); },
-            doBeanConvert() { showToast('Java Bean 生成待实现', 'info'); },
-            getContentForCopy() { return document.getElementById('beanOutput')?.value || ''; },
-            onActivate() {},
-            onSync() {}
-        };
-        App.registerModule('bean', BeanModule);
-        window.doBeanConvert = () => BeanModule.doBeanConvert();
-        
-        // Sample data loader
-        function loadSample() {
-            const sample = {
-                "project": "JSON Master Pro",
-                "version": "2.0.0",
-                "features": ["格式化", "树视图", "对比", "转换", "Mock 数据", "查询", "分析"],
-                "author": {"name": "Developer", "email": "dev@example.com"},
-                "stats": {"users": 1000, "stars": 500, "forks": 100}
-            };
-            document.getElementById('inputJson').value = JSON.stringify(sample, null, 4);
-            App.propagateFrom(document.getElementById('inputJson'));
-            showToast('已加载示例数据', 'info');
+
+        // ================= Loading =================
+        let loadingShowAt = 0, hideTimer = null;
+        function showLoading(msg) { clearTimeout(hideTimer); loadingShowAt = performance.now(); els.overlayText.textContent = msg; els.overlay.style.display = 'flex'; document.body.style.cursor = 'wait'; }
+        function hideLoading() { const remain = Math.max(0, 250 - (performance.now() - loadingShowAt)); clearTimeout(hideTimer); hideTimer = setTimeout(() => { els.overlay.style.display = 'none'; document.body.style.cursor = ''; }, remain); }
+        function withLoading(msg, fn) { showLoading(msg); requestAnimationFrame(() => requestAnimationFrame(() => { try { fn(); } finally { hideLoading(); } })); }
+        function scrollContainerToElement(container, el) {
+            const cRect = container.getBoundingClientRect(), rRect = el.getBoundingClientRect();
+            container.scrollTop = Math.max(0, Math.round(container.scrollTop + (rRect.top - cRect.top) - container.clientHeight / 2 + rRect.height / 2));
         }
-        
-        // Bootstrap the app
-        document.addEventListener('DOMContentLoaded', () => {
-            App.bootstrap();
+
+        // ================= 全局输入同步 =================
+        let syncTimer = null;
+        function propagateFrom(el) {
+            const v = el.value;
+            SYNC_IDS.forEach(id => {
+                const t = document.getElementById(id);
+                if (t && t !== el && t.value !== v) t.value = v;
+            });
+        }
+        function onSyncInput(el) {
+            propagateFrom(el);
+            clearTimeout(syncTimer);
+            syncTimer = setTimeout(() => withLoading('解析中...', () => {
+                processInput();
+                if (currentTab === 'convert') doConvert();
+                else if (currentTab === 'java') doJavaConvert();
+                else if (currentTab === 'bean') doBeanConvert();
+            }), 250);
+        }
+        SYNC_IDS.forEach(id => {
+            const t = document.getElementById(id);
+            t.addEventListener('input', () => onSyncInput(t));
         });
+
+        function syncScroll(s, t) { if (isManualScrolling) return; t.scrollTop = s.scrollTop; t.scrollLeft = s.scrollLeft; }
+        els.diffLeftCont.addEventListener('scroll', () => syncScroll(els.diffLeftCont, els.diffRightCont));
+        els.diffRightCont.addEventListener('scroll', () => syncScroll(els.diffRightCont, els.diffLeftCont));
+        function syncInputs(s, d) { if (isInputSyncing || diffMode) return; isInputSyncing = true; const r = s.scrollTop / Math.max(1, s.scrollHeight - s.clientHeight); d.scrollTop = r * (d.scrollHeight - d.clientHeight); requestAnimationFrame(() => { isInputSyncing = false; }); }
+        els.cmpLeft.addEventListener('scroll', () => syncInputs(els.cmpLeft, els.cmpRight));
+        els.cmpRight.addEventListener('scroll', () => syncInputs(els.cmpRight, els.cmpLeft));
+        els.tree.addEventListener('click', (e) => { const t = e.target.closest('.j-toggle, .j-ell'); if (!t || t.classList.contains('j-toggle-off')) return; const li = t.closest('li.j-node'); if (li) li.classList.toggle('collapsed'); });
+
+        // ================= 核心解析 =================
+        function processInput() {
+            const raw = els.input.value.trim();
+            resetFmtSearchState(); resetTreeSearchState();
+            if (!raw) {
+                els.fmtOutput.innerHTML = ''; els.tree.innerHTML = '';
+                els.fmtError.classList.add('hidden'); els.error.classList.add('hidden');
+                els.statusBar.innerText = "就绪"; currentObj = null; return;
+            }
+            try {
+                currentObj = JSON.parse(raw);
+                renderFormattedOutput();
+                renderTree(currentObj);
+                els.fmtError.classList.add('hidden'); els.error.classList.add('hidden');
+                els.statusBar.innerText = `有效 JSON • ${formatBytes(new Blob([JSON.stringify(currentObj)]).size)} • ${countKeys(currentObj)} 个键`;
+                if (els.fmtSearchInput.value.trim()) applyFmtSearch(els.fmtSearchInput.value.trim());
+                if (els.treeSearchInput.value.trim()) doTreeSearch(els.treeSearchInput.value.trim());
+            } catch (e) {
+                currentObj = null;
+                els.fmtOutput.innerHTML = ''; els.tree.innerHTML = '';
+                els.fmtErrorText.innerText = e.message; els.errorText.innerText = e.message;
+                els.fmtError.classList.remove('hidden'); els.error.classList.remove('hidden');
+                els.statusBar.innerText = "语法错误";
+            }
+        }
+        function doFormat() { if (!currentObj) return; withLoading('格式化中...', () => { els.input.value = JSON.stringify(currentObj, null, 4); propagateFrom(els.input); renderFormattedOutput(); }); }
+        function minifyJson() { if (currentObj) withLoading('压缩中...', () => { els.input.value = JSON.stringify(currentObj); propagateFrom(els.input); }); }
+        function doToggleAll(expand) { withLoading(expand ? '展开中...' : '折叠中...', () => { els.tree.querySelectorAll('li.j-node').forEach(li => li.classList.toggle('collapsed', !expand)); if (!expand) { const r = els.tree.querySelector('li.j-node'); if (r) r.classList.remove('collapsed'); } }); }
+        function clearAll() {
+            withLoading('清空中...', () => {
+                SYNC_IDS.concat(['compareRight', 'convOutput', 'jmOutput', 'beanOutput', 'fmtSearchInput', 'treeSearchInput']).forEach(id => document.getElementById(id).value = '');
+                setDiffMode(false); els.diffLeft.innerHTML = ''; els.diffRight.innerHTML = '';
+                diffRows = []; diffIndices = []; currentDiffIdx = -1; updateDiffNav();
+                els.statsLeft.innerText = ''; els.statsRight.innerText = '';
+                hideConvError(); hideJmError(); hideBeanError();
+                els.beanStats.innerText = '输入 0 字符 → 0 个类';
+                processInput();
+            });
+        }
+        function loadSample() {
+            withLoading('加载示例...', () => {
+                const s1 = { "success": true, "code": 200, "message": "操作成功", "data": { "partNoList": null, "instancePartsNo": "S1000JC-BM0047", "weight": "0.0", "level": null, "tags": ["a", "b"] } };
+                const s2 = JSON.parse(JSON.stringify(s1)); s2.data.errType = "N6"; s2.data.newKey = 1;
+                els.input.value = JSON.stringify(s1, null, 4);
+                propagateFrom(els.input);
+                els.cmpRight.value = JSON.stringify(s2, null, 4);
+                processInput(); switchTab('compare'); runDiff();
+            });
+        }
+        function copyResult() { if (!currentObj) return; navigator.clipboard.writeText(JSON.stringify(currentObj, null, 4)); flashBtn('button[onclick="copyResult()"]'); }
+        function flashBtn(sel) { const b = document.querySelector(sel); if (!b) return; const o = b.innerHTML; b.innerHTML = '<i class="fa-solid fa-check"></i> 已复制'; setTimeout(() => b.innerHTML = o, 1000); }
+        function syncLeft() { propagateFrom(els.input); if (diffMode) doRunDiff(); }
+        function syncRight() { if (els.cmpRight.value) { els.input.value = els.cmpRight.value; onSyncInput(els.input); } }
+        function switchTab(tab) {
+            currentTab = tab;
+            ['format','tree','compare','convert','java','bean'].forEach(t => {
+                const viewId = { format:'viewFormat', tree:'viewTree', compare:'viewCompare', convert:'viewConvert', java:'viewJava', bean:'viewBean' }[t];
+                const tabId = { format:'tabFormat', tree:'tabTree', compare:'tabCompare', convert:'tabConvert', java:'tabJava', bean:'tabBean' }[t];
+                document.getElementById(viewId).classList.toggle('hidden', t !== tab);
+                document.getElementById(tabId).classList.toggle('tab-active', t === tab);
+            });
+            if (tab === 'convert') doConvert();
+            else if (tab === 'java') doJavaConvert();
+            else if (tab === 'bean') doBeanConvert();
+        }
+
+        // ================= 格式化输出 + 搜索 =================
+        function syntaxHighlight(json) {
+            json = String(json).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => { let c = 'json-number'; if (/^"/.test(m)) c = /:$/.test(m) ? 'json-key' : 'json-string'; else if (/true|false/.test(m)) c = 'json-boolean'; else if (/null/.test(m)) c = 'json-null'; return `<span class="${c}">${m}</span>`; });
+        }
+        function renderFormattedOutput() {
+            if (!currentObj) { els.fmtOutput.innerHTML = ''; fmtMatches = []; return; }
+            const str = JSON.stringify(currentObj, null, 4);
+            let html;
+            if (fmtTerm) {
+                const ph1 = '\u0001', ph2 = '\u0002';
+                const marked = str.replace(new RegExp(escapeRegExp(fmtTerm), 'gi'), m => ph1 + m + ph2);
+                html = syntaxHighlight(marked).split(ph1).join('<mark>').split(ph2).join('</mark>');
+            } else html = syntaxHighlight(str);
+            els.fmtOutput.innerHTML = html;
+            fmtMatches = Array.from(els.fmtOutput.querySelectorAll('mark'));
+            if (fmtTerm) {
+                els.fmtSearchCount.classList.remove('hidden');
+                if (fmtMatches.length) { fmtIdx = 0; highlightFmt(0); els.fmtSearchCount.innerText = `1/${fmtMatches.length}`; }
+                else { fmtIdx = -1; els.fmtSearchCount.innerText = '0/0'; }
+            }
+        }
+        function resetFmtSearchState() { fmtTerm = ''; fmtMatches = []; fmtIdx = -1; els.fmtSearchCount.classList.add('hidden'); }
+        function handleFmtSearch(e) {
+            if (e && e.key === 'Enter') { navigateFmtSearch(e.shiftKey ? -1 : 1); return; }
+            fmtTerm = els.fmtSearchInput.value.trim();
+            renderFormattedOutput();
+        }
+        function applyFmtSearch(term) { fmtTerm = term; renderFormattedOutput(); }
+        function navigateFmtSearch(dir) {
+            if (!fmtMatches.length) return;
+            if (fmtIdx >= 0 && fmtMatches[fmtIdx]) fmtMatches[fmtIdx].classList.remove('current');
+            fmtIdx += dir;
+            if (fmtIdx >= fmtMatches.length) fmtIdx = 0;
+            if (fmtIdx < 0) fmtIdx = fmtMatches.length - 1;
+            highlightFmt(fmtIdx);
+            els.fmtSearchCount.innerText = `${fmtIdx + 1}/${fmtMatches.length}`;
+        }
+        function highlightFmt(i) { const el = fmtMatches[i]; if (!el) return; el.classList.add('current'); scrollContainerToElement(els.fmtContainer, el); }
+
+        // ================= 树视图 + 搜索 =================
+        function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function valHtml(v) { if (v === null) return '<span class="json-null">null</span>'; const t = typeof v; if (t === 'string') return `<span class="json-string">${esc(v)}</span>`; if (t === 'number') return `<span class="json-number">${v}</span>`; if (t === 'boolean') return `<span class="json-boolean">${v}</span>`; return esc(String(v)); }
+        function nodeHtml(data, keyName, isLast, depth) {
+            const comma = isLast ? '' : ',';
+            const keyHtml = keyName === null ? '' : `<span class="json-key">"${esc(keyName)}"</span>: `;
+            const isArr = Array.isArray(data), isObj = !isArr && data !== null && typeof data === 'object';
+            if (!isArr && !isObj) return `<li class="j-leaf"><div class="j-row"><span class="j-sp"></span>${keyHtml}${valHtml(data)}${comma}</div></li>`;
+            const open = isArr ? '[' : '{', close = isArr ? ']' : '}';
+            const entries = isArr ? data.map(v => [null, v]) : Object.keys(data).map(k => [k, data[k]]);
+            const count = entries.length, label = isArr ? `${count} 项` : `${count} 键`;
+            const shouldCollapse = depth >= AUTO_COLLAPSE_DEPTH || count > AUTO_COLLAPSE_SIZE;
+            let html = `<li class="j-node${shouldCollapse ? ' collapsed' : ''}">`;
+            html += `<div class="j-row"><span class="${count === 0 ? 'j-toggle j-toggle-off' : 'j-toggle'}"><i class="fa-solid fa-caret-down"></i></span>${keyHtml}<span class="j-br">${open}</span><span class="j-ell"> … ${label} ${close}${comma}</span></div>`;
+            if (count > 0) { html += '<ul class="j-children">'; for (let i = 0; i < count; i++) html += nodeHtml(entries[i][1], entries[i][0], i === count - 1, depth + 1); html += '</ul>'; }
+            html += `<div class="j-close">${close}${comma}</div></li>`;
+            return html;
+        }
+        function renderTree(obj) { els.tree.innerHTML = '<ul>' + nodeHtml(obj, null, true, 0) + '</ul>'; }
+        function escapeRegExp(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+        function handleTreeSearch(e) { if (e && e.key === 'Enter') { navigateTreeSearch(e.shiftKey ? -1 : 1); return; } withLoading('搜索中...', () => doTreeSearch(els.treeSearchInput.value.trim())); }
+        function doTreeSearch(term) {
+            resetTreeSearchState();
+            if (!term || !currentObj) return;
+            const walker = document.createTreeWalker(els.tree, NodeFilter.SHOW_TEXT, null, false);
+            const textNodes = []; let n; while ((n = walker.nextNode())) textNodes.push(n);
+            const regex = new RegExp(escapeRegExp(term), 'gi');
+            textNodes.forEach(node => {
+                if (!node.parentNode) return;
+                const text = node.nodeValue; regex.lastIndex = 0;
+                if (!regex.test(text)) return; regex.lastIndex = 0;
+                const frag = document.createDocumentFragment(); let last = 0, m;
+                while ((m = regex.exec(text)) !== null) {
+                    if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                    const mark = document.createElement('mark'); mark.textContent = m[0]; frag.appendChild(mark); treeMatches.push(mark);
+                    last = m.index + m[0].length; if (regex.lastIndex === m.index) regex.lastIndex++;
+                }
+                if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+                const w = document.createElement('span'); w.appendChild(frag); node.parentNode.replaceChild(w, node);
+            });
+            els.treeSearchCount.classList.remove('hidden');
+            if (treeMatches.length) { treeIdx = 0; highlightTreeMatch(0); els.treeSearchCount.innerText = `1/${treeMatches.length}`; }
+            else { treeIdx = -1; els.treeSearchCount.innerText = '0/0'; }
+        }
+        function resetTreeSearchState() {
+            treeMatches = []; treeIdx = -1; els.treeSearchCount.classList.add('hidden');
+            els.tree.querySelectorAll('mark').forEach(m => { m.parentNode.replaceChild(document.createTextNode(m.textContent), m); });
+            els.tree.querySelectorAll('span:not([class])').forEach(s => { const p = s.parentNode; if (!p) return; while (s.firstChild) p.insertBefore(s.firstChild, s); p.removeChild(s); });
+            els.tree.normalize();
+        }
+        function navigateTreeSearch(dir) { if (!treeMatches.length) return; if (treeIdx >= 0 && treeMatches[treeIdx]) treeMatches[treeIdx].classList.remove('current'); treeIdx += dir; if (treeIdx >= treeMatches.length) treeIdx = 0; if (treeIdx < 0) treeIdx = treeMatches.length - 1; highlightTreeMatch(treeIdx); els.treeSearchCount.innerText = `${treeIdx + 1}/${treeMatches.length}`; }
+        function highlightTreeMatch(idx) { const el = treeMatches[idx]; if (!el) return; el.classList.add('current'); let p = el.parentElement; while (p && p !== els.tree) { if (p.tagName === 'LI') p.classList.remove('collapsed'); p = p.parentElement; } scrollContainerToElement(els.treeCont, el); }
+
+        // ================= Tab 对比 =================
+        function doRunDiff() { withLoading('对比中...', runDiff); }
+        function setDiffMode(on) { diffMode = on; els.cmpLeft.style.display = on ? 'none' : 'block'; els.cmpRight.style.display = on ? 'none' : 'block'; els.diffLeftCont.classList.toggle('hidden', !on); els.diffRightCont.classList.toggle('hidden', !on); els.btnEdit.classList.toggle('hidden', !on); els.cmpHint.textContent = on ? '差异已高亮在原文行上 · 点击"返回编辑"可修改' : '左侧输入已全局同步 · 在右侧粘贴新 JSON 后点击"开始对比"'; }
+        function runDiff() {
+            const l = els.cmpLeft.value, r = els.cmpRight.value;
+            if (!l.trim() || !r.trim()) { els.statusBar.innerText = '对比失败: 两侧都需要 JSON'; return; }
+            diffRows = diffLinesByLCS(l.split('\n'), r.split('\n'));
+            renderDiffRows(diffRows); currentDiffIdx = -1; updateDiffNav(); setDiffMode(true);
+        }
+        function diffLinesByLCS(a, b) {
+            const n0 = a.length, m0 = b.length; let start = 0;
+            while (start < n0 && start < m0 && a[start] === b[start]) start++;
+            let endA = n0, endB = m0;
+            while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) { endA--; endB--; }
+            const rows = [];
+            for (let i = 0; i < start; i++) rows.push({ l: a[i], r: b[i], type: 'same' });
+            const midA = a.slice(start, endA), midB = b.slice(start, endB), n = midA.length, m = midB.length;
+            if (n === 0 || m === 0) { midA.forEach(x => rows.push({ l: x, r: null, type: 'removed' })); midB.forEach(x => rows.push({ l: null, r: x, type: 'added' })); }
+            else if (n * m <= 4000000) {
+                const W = m + 1, dp = new Uint32Array((n + 1) * W);
+                for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i * W + j] = midA[i] === midB[j] ? dp[(i + 1) * W + j + 1] + 1 : Math.max(dp[(i + 1) * W + j], dp[i * W + j + 1]);
+                const ops = []; let i = 0, j = 0;
+                while (i < n && j < m) { if (midA[i] === midB[j]) { ops.push(['same', midA[i], midB[j]]); i++; j++; } else if (dp[(i + 1) * W + j] >= dp[i * W + j + 1]) { ops.push(['del', midA[i], null]); i++; } else { ops.push(['add', null, midB[j]]); j++; } }
+                while (i < n) ops.push(['del', midA[i++], null]); while (j < m) ops.push(['add', null, midB[j++]]);
+                let k = 0;
+                while (k < ops.length) {
+                    if (ops[k][0] === 'same') { rows.push({ l: ops[k][1], r: ops[k][2], type: 'same' }); k++; continue; }
+                    const run = []; while (k < ops.length && ops[k][0] !== 'same') { run.push(ops[k]); k++; }
+                    const dels = run.filter(o => o[0] === 'del').map(o => o[1]), adds = run.filter(o => o[0] === 'add').map(o => o[2]);
+                    const pc = Math.min(dels.length, adds.length);
+                    for (let t = 0; t < pc; t++) rows.push({ l: dels[t], r: adds[t], type: 'modified' });
+                    for (let t = pc; t < dels.length; t++) rows.push({ l: dels[t], r: null, type: 'removed' });
+                    for (let t = pc; t < adds.length; t++) rows.push({ l: null, r: adds[t], type: 'added' });
+                }
+            } else { midA.forEach(x => rows.push({ l: x, r: null, type: 'removed' })); midB.forEach(x => rows.push({ l: null, r: x, type: 'added' })); }
+            for (let i = endA; i < n0; i++) rows.push({ l: a[i], r: b[endB + (i - endA)], type: 'same' });
+            return rows;
+        }
+        function wordDiffPair(l, r) {
+            let p = 0; while (p < l.length && p < r.length && l[p] === r[p]) p++;
+            let s = 0; while (s < l.length - p && s < r.length - p && l[l.length - 1 - s] === r[r.length - 1 - s]) s++;
+            const pre = l.slice(0, p), suf = l.slice(l.length - s), mL = l.slice(p, l.length - s), mR = r.slice(p, r.length - s);
+            return [esc(pre) + (mL ? `<span class="word-diff-l">${esc(mL)}</span>` : '') + esc(suf), esc(pre) + (mR ? `<span class="word-diff-r">${esc(mR)}</span>` : '') + esc(suf)];
+        }
+        function renderDiffRows(rows) {
+            const L = [], R = []; let added = 0, removed = 0, modified = 0; diffIndices = []; let lnL = 0, lnR = 0;
+            rows.forEach((row, idx) => {
+                if (row.type !== 'same') diffIndices.push(idx);
+                let lC = '', rC = '', lI = '', rI = '', lH = '', rH = '';
+                if (row.type === 'same') { lnL++; lnR++; lH = syntaxHighlight(row.l); rH = syntaxHighlight(row.r); }
+                else if (row.type === 'added') { added++; lnR++; rC = 'bg-added'; rI = '+'; rH = syntaxHighlight(row.r); lC = 'bg-gap'; }
+                else if (row.type === 'removed') { removed++; lnL++; lC = 'bg-removed'; lI = '-'; lH = syntaxHighlight(row.l); rC = 'bg-gap'; }
+                else { modified++; lnL++; lnR++; lC = 'bg-modified'; rC = 'bg-modified'; lI = '~'; rI = '~'; const pr = wordDiffPair(row.l, row.r); lH = pr[0]; rH = pr[1]; }
+                L.push(`<div id="L-${idx}" class="diff-row ${lC}"><span class="ln">${row.l != null ? lnL : ''}</span><span class="dg ${lC ? 'text-' + row.type : ''}">${lI}</span><span class="dc">${lH}</span></div>`);
+                R.push(`<div id="R-${idx}" class="diff-row ${rC}"><span class="ln">${row.r != null ? lnR : ''}</span><span class="dg ${rC ? 'text-' + row.type : ''}">${rI}</span><span class="dc">${rH}</span></div>`);
+            });
+            els.diffLeft.innerHTML = L.join(''); els.diffRight.innerHTML = R.join('');
+            els.statsLeft.innerText = `-${removed} ~${modified}`; els.statsRight.innerText = `+${added} ~${modified}`;
+            isManualScrolling = true;
+            els.diffLeftCont.scrollTop = 0; els.diffLeftCont.scrollLeft = 0; els.diffRightCont.scrollTop = 0; els.diffRightCont.scrollLeft = 0;
+            requestAnimationFrame(() => { isManualScrolling = false; });
+        }
+        function navigateDiff(dir) {
+            if (!diffIndices.length) return;
+            document.querySelectorAll('.diff-active').forEach(el => el.classList.remove('diff-active'));
+            if (currentDiffIdx === -1) currentDiffIdx = dir > 0 ? 0 : diffIndices.length - 1; else currentDiffIdx += dir;
+            if (currentDiffIdx >= diffIndices.length) currentDiffIdx = 0; if (currentDiffIdx < 0) currentDiffIdx = diffIndices.length - 1;
+            const idx = diffIndices[currentDiffIdx];
+            const lEl = document.getElementById(`L-${idx}`), rEl = document.getElementById(`R-${idx}`);
+            if (lEl && rEl) {
+                [lEl, rEl].forEach(el => { el.classList.remove('diff-active'); void el.offsetWidth; el.classList.add('diff-active'); });
+                isManualScrolling = true;
+                scrollContainerToElement(els.diffLeftCont, lEl); scrollContainerToElement(els.diffRightCont, rEl);
+                els.diffRightCont.scrollTop = els.diffLeftCont.scrollTop;
+                requestAnimationFrame(() => requestAnimationFrame(() => { isManualScrolling = false; }));
+            }
+            updateDiffNav();
+        }
+        function updateDiffNav() { els.diffNavCount.innerText = `${diffIndices.length ? currentDiffIdx + 1 : 0}/${diffIndices.length}`; }
+
+        // ================= Tab JSON ⇄ String =================
+        function setConvDir(dir) {
+            convDir = dir;
+            document.getElementById('dirJ2S').classList.toggle('dir-active', dir === 'j2s');
+            document.getElementById('dirS2J').classList.toggle('dir-active', dir === 's2j');
+            document.getElementById('optGroupJ2S').classList.toggle('hidden', dir !== 'j2s');
+            const g = document.getElementById('optGroupS2J');
+            g.classList.toggle('hidden', dir !== 's2j'); g.classList.toggle('flex', dir === 's2j');
+            els.convInLabel.textContent = (dir === 'j2s' ? '输入: JSON 对象/数组文本' : '输入: 转义后的字符串 (可带外层引号 / 可多重转义)') + ' (全局同步)';
+            els.convOutLabel.textContent = dir === 'j2s' ? '输出: 转义后的字符串' : '输出: 还原后的 JSON';
+            doConvert();
+        }
+        function showConvError(m) { els.convErrorText.textContent = m; els.convError.classList.remove('hidden'); }
+        function hideConvError() { els.convError.classList.add('hidden'); }
+        function tryParse(s) { try { return { ok: true, v: JSON.parse(s) }; } catch (e) { return { ok: false, e }; } }
+        function manualUnescape(s) {
+            return s.replace(/\\(u[0-9a-fA-F]{4}|.)/g, (m, g) => {
+                if (g[0] === 'u') return String.fromCharCode(parseInt(g.slice(1), 16));
+                switch (g) { case 'n': return '\n'; case 't': return '\t'; case 'r': return '\r'; case 'b': return '\x08'; case 'f': return '\f'; case '0': return '\0'; default: return g; }
+            });
+        }
+        function doConvert(manual) {
+            const src = els.convInput.value; hideConvError();
+            if (!src.trim()) { els.convOutput.value = ''; els.convStats.innerText = '输入 0 字符 → 输出 0 字符'; return; }
+            const run = () => {
+                let out = '';
+                try {
+                    if (convDir === 'j2s') {
+                        const p = tryParse(src); if (!p.ok) throw new Error('输入不是合法 JSON: ' + p.e.message);
+                        let s = JSON.stringify(JSON.stringify(p.v));
+                        if (!document.getElementById('optQuotes').checked) s = s.slice(1, -1);
+                        out = s;
+                    } else {
+                        let s = src.trim(), cur;
+                        if (s.length >= 2 && s[0] === '"' && s[s.length - 1] === '"') { const r = tryParse(s); cur = r.ok ? r.v : manualUnescape(s); }
+                        else cur = manualUnescape(s);
+                        const deep = document.getElementById('optDeep').checked; let guard = 0;
+                        while (deep && typeof cur === 'string' && guard++ < 10) {
+                            const t = cur.trim();
+                            if (t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"') { const r = tryParse(t); if (r.ok) { cur = r.v; continue; } }
+                            if (/^[\[{]/.test(t)) { const r = tryParse(t); if (r.ok) { cur = r.v; continue; } }
+                            if (t.includes('\\"') || t.includes('\\\\')) { cur = manualUnescape(t); continue; }
+                            break;
+                        }
+                        const pretty = document.getElementById('optPretty').checked;
+                        if (typeof cur === 'string') { const r = tryParse(cur); if (r.ok) cur = r.v; }
+                        out = typeof cur === 'string' ? cur : JSON.stringify(cur, null, pretty ? 4 : undefined);
+                    }
+                    els.convOutput.value = out; els.convStats.innerText = `输入 ${src.length} 字符 → 输出 ${out.length} 字符`;
+                } catch (e) { els.convOutput.value = ''; showConvError(e.message); els.convStats.innerText = `输入 ${src.length} 字符 → 转换失败`; }
+            };
+            if (manual) withLoading('转换中...', run); else run();
+        }
+        function swapConv() { const o = els.convOutput.value; if (!o) return; els.convInput.value = o; propagateFrom(els.convInput); setConvDir(convDir === 'j2s' ? 's2j' : 'j2s'); }
+        function copyConvOutput() { if (!els.convOutput.value) return; navigator.clipboard.writeText(els.convOutput.value); flashBtn('button[onclick="copyConvOutput()"]'); }
+        function loadConvSample() {
+            if (convDir === 'j2s') { els.convInput.value = JSON.stringify({ "id": 1, "name": "发动机及附件", "ok": true, "note": "含\"引号\"和换行\n测试" }, null, 4); propagateFrom(els.convInput); }
+            else els.convInput.value = JSON.stringify(JSON.stringify({ "id": 1, "name": "发动机及附件", "ok": true }));
+            doConvert(true);
+        }
+
+        // ================= Tab JSON ⇄ Java Map =================
+        function setJmDir(dir) {
+            jmDir = dir;
+            document.getElementById('jmDirJ2M').classList.toggle('dir-active', dir === 'j2m');
+            document.getElementById('jmDirM2J').classList.toggle('dir-active', dir === 'm2j');
+            document.getElementById('jmOptJ2M').style.display = dir === 'j2m' ? 'flex' : 'none';
+            els.jmInLabel.textContent = (dir === 'j2m' ? '输入: JSON 对象/数组' : '输入: Java Map/List 初始化代码 (put/add 语句)') + ' (全局同步)';
+            els.jmOutLabel.textContent = dir === 'j2m' ? '输出: Java Map 初始化代码 (HashMap + 小驼峰变量)' : '输出: 还原后的 JSON';
+            doJavaConvert();
+        }
+        function showJmError(m) { els.jmErrorText.textContent = m; els.jmError.classList.remove('hidden'); }
+        function hideJmError() { els.jmError.classList.add('hidden'); }
+        function javaStringLiteral(s) { return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t').replace(/\x08/g, '\\b').replace(/\f/g, '\\f') + '"'; }
+        function javaNumberLiteral(v) { if (Number.isInteger(v)) return Math.abs(v) <= 2147483647 ? String(v) : String(v) + 'L'; return String(v); }
+        function javaLiteral(v) {
+            if (v === null) return 'null';
+            if (typeof v === 'boolean') return String(v);
+            if (typeof v === 'number') return javaNumberLiteral(v);
+            if (typeof v === 'string') return javaStringLiteral(v);
+            return 'null';
+        }
+        function camelKey(k) {
+            const segs = String(k).replace(/[^A-Za-z0-9]+/g, '_').split('_').filter(Boolean);
+            if (!segs.length) return 'key';
+            return segs.map((s, i) => i === 0 ? s.charAt(0).toLowerCase() + s.slice(1) : s.charAt(0).toUpperCase() + s.slice(1)).join('');
+        }
+        function capFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+        function pascal(s) { return capFirst(camelKey(s)); }
+        function jsonToJava(value, opts) {
+            const lines = [], used = new Set();
+            function unique(name) { let cand = name, i = 2; while (used.has(cand)) cand = name + (i++); used.add(cand); return cand; }
+            const isLit = v => v === null || typeof v !== 'object';
+            function emit(val, base) {
+                if (Array.isArray(val)) {
+                    const name = unique(base);
+                    lines.push(`${opts.useVar ? 'var' : 'List<Object>'} ${name} = new ArrayList<>();`);
+                    val.forEach((item, i) => {
+                        if (isLit(item)) lines.push(`${name}.add(${javaLiteral(item)});`);
+                        else { const child = emit(item, base + i); lines.push(`${name}.add(${child});`); }
+                    });
+                    return name;
+                }
+                if (val && typeof val === 'object') {
+                    const name = unique(base);
+                    lines.push(`${opts.useVar ? 'var' : 'Map<String, Object>'} ${name} = new HashMap<>();`);
+                    Object.keys(val).forEach(k => {
+                        const v = val[k];
+                        if (isLit(v)) lines.push(`${name}.put(${javaStringLiteral(k)}, ${javaLiteral(v)});`);
+                        else { const child = emit(v, base + capFirst(camelKey(k))); lines.push(`${name}.put(${javaStringLiteral(k)}, ${child});`); }
+                    });
+                    return name;
+                }
+                return javaLiteral(val);
+            }
+            const root = emit(value, opts.rootName);
+            return { code: lines.join('\n'), root };
+        }
+        function parseJavaScalar(t, warnings) {
+            if (t === 'null') return null;
+            if (t === 'true') return true;
+            if (t === 'false') return false;
+            if (t[0] === '"' && t[t.length - 1] === '"') return manualUnescape(t.slice(1, -1));
+            if (/^-?\d+L$/i.test(t)) return parseInt(t, 10);
+            if (/^-?\d+$/.test(t)) return parseInt(t, 10);
+            if (/^-?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?[dDfF]?$/.test(t) && /[.\-eEdDfF]/.test(t)) return parseFloat(t);
+            warnings.push(`无法识别的值, 按字符串处理: ${t}`);
+            return t;
+        }
+        function javaToJson(src) {
+            const vars = {}, order = [], referenced = new Set(), warnings = [];
+            const re = /(\w+)\s*=\s*new\s+(HashMap|LinkedHashMap|ConcurrentHashMap|TreeMap|ArrayList|LinkedList)\s*(?:<[^>]*>)?\s*\(\s*\)\s*;|(\w+)\.put\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*("(?:[^"\\]|\\.)*"|[^,;()]+?)\s*\)\s*;|(\w+)\.add\(\s*("(?:[^"\\]|\\.)*"|[^;()]+?)\s*\)\s*;/g;
+            let m;
+            while ((m = re.exec(src))) {
+                if (m[1]) { const kind = /ArrayList|LinkedList/.test(m[2]) ? 'list' : 'map'; vars[m[1]] = { kind, obj: kind === 'list' ? [] : {} }; order.push(m[1]); }
+                else if (m[3]) {
+                    const vname = m[3], key = manualUnescape(m[4]), rawVal = m[5].trim();
+                    if (!vars[vname]) { vars[vname] = { kind: 'map', obj: {} }; order.push(vname); warnings.push(`变量 ${vname} 未声明, 自动按 Map 处理`); }
+                    let val;
+                    if (/^\w+$/.test(rawVal) && vars[rawVal]) { val = vars[rawVal].obj; referenced.add(rawVal); }
+                    else val = parseJavaScalar(rawVal, warnings);
+                    vars[vname].obj[key] = val;
+                } else if (m[6]) {
+                    const vname = m[6], rawVal = m[7].trim();
+                    if (!vars[vname]) { vars[vname] = { kind: 'list', obj: [] }; order.push(vname); warnings.push(`变量 ${vname} 未声明, 自动按 List 处理`); }
+                    let val;
+                    if (/^\w+$/.test(rawVal) && vars[rawVal]) { val = vars[rawVal].obj; referenced.add(rawVal); }
+                    else val = parseJavaScalar(rawVal, warnings);
+                    vars[vname].obj.push(val);
+                }
+            }
+            if (!order.length) throw new Error('未找到任何 Map/List 声明或 put/add 语句');
+            const rootName = order.find(n => !referenced.has(n)) || order[order.length - 1];
+            return { obj: vars[rootName].obj, warnings, rootName };
+        }
+        function doJavaConvert(manual) {
+            const src = els.jmInput.value; hideJmError();
+            if (!src.trim()) { els.jmOutput.value = ''; els.jmStats.innerText = '输入 0 字符 → 输出 0 字符'; return; }
+            const run = () => {
+                let out = '';
+                try {
+                    if (jmDir === 'j2m') {
+                        const p = tryParse(src); if (!p.ok) throw new Error('输入不是合法 JSON: ' + p.e.message);
+                        const rootName = camelKey(document.getElementById('jmRootName').value.trim() || 'map');
+                        const r = jsonToJava(p.v, { useVar: document.getElementById('jmUseVar').checked, rootName });
+                        if (!r.code) throw new Error('生成结果为空, 请检查输入结构');
+                        out = r.code;
+                    } else {
+                        const r = javaToJson(src);
+                        out = JSON.stringify(r.obj, null, 4);
+                        if (r.warnings.length) showJmError('警告:\n- ' + r.warnings.join('\n- '));
+                    }
+                    els.jmOutput.value = out;
+                    els.jmStats.innerText = `输入 ${src.length} 字符 → 输出 ${out.length} 字符`;
+                } catch (e) { els.jmOutput.value = ''; showJmError(e.message); els.jmStats.innerText = `输入 ${src.length} 字符 → 转换失败`; }
+            };
+            if (manual) withLoading('转换中...', run); else run();
+        }
+        function swapJm() { const o = els.jmOutput.value; if (!o) return; els.jmInput.value = o; propagateFrom(els.jmInput); setJmDir(jmDir === 'j2m' ? 'm2j' : 'j2m'); }
+        function copyJmOutput() { if (!els.jmOutput.value) return; navigator.clipboard.writeText(els.jmOutput.value); flashBtn('button[onclick="copyJmOutput()"]'); }
+        function loadJmSample() {
+            if (jmDir === 'j2m') { els.jmInput.value = JSON.stringify({ "success": true, "code": 200, "data": { "name": "发动机及附件", "weight": 0.0, "tags": ["a", "b"], "extra": null } }, null, 4); propagateFrom(els.jmInput); }
+            else els.jmInput.value = ['Map<String, Object> map = new HashMap<>();','map.put("success", true);','map.put("code", 200);','Map<String, Object> mapData = new HashMap<>();','mapData.put("name", "发动机及附件");','List<Object> mapDataTags = new ArrayList<>();','mapDataTags.add("a");','mapDataTags.add("b");','mapData.put("tags", mapDataTags);','mapData.put("extra", null);','map.put("data", mapData);'].join('\n');
+            doJavaConvert(true);
+        }
+
+        // ================= Tab JSON → Java Bean =================
+        const DT_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})?$/;
+        const D_RE = /^\d{4}-\d{2}-\d{2}$/;
+        function jtype(v) { if (v === null || v === undefined) return 'null'; if (Array.isArray(v)) return 'array'; return typeof v; }
+        function descEscape(s) { return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"'); }
+        function jsonToBeans(value, opts) {
+            const classes = new Map();
+            function shallowSig(objs) {
+                const keys = [];
+                objs.forEach(o => Object.keys(o).forEach(k => { if (!keys.includes(k)) keys.push(k); }));
+                return keys.map(k => {
+                    let t = 'null';
+                    for (const o of objs) { const v = o[k]; if (v !== null && v !== undefined) { t = jtype(v); break; } }
+                    return k + ':' + t;
+                }).join(',');
+            }
+            function numberType(vals) {
+                const allInt = vals.every(v => Number.isInteger(v));
+                if (allInt) return vals.every(v => Math.abs(v) <= 2147483647) ? 'Integer' : 'Long';
+                return opts.bigDecimal ? 'BigDecimal' : 'Double';
+            }
+            function stringType(vals) {
+                if (vals.every(v => typeof v === 'string' && DT_RE.test(v))) return 'LocalDateTime';
+                if (vals.every(v => typeof v === 'string' && D_RE.test(v))) return 'LocalDate';
+                return 'String';
+            }
+            function typeOf(vals, path, key) {
+                const types = new Set(vals.map(jtype));
+                types.delete('null');
+                if (types.size === 1) {
+                    const t = [...types][0];
+                    if (t === 'object') return buildClass(vals.filter(v => jtype(v) === 'object'), path, key);
+                    if (t === 'array') {
+                        const elems = [];
+                        vals.forEach(a => a.forEach(e => { if (e !== null && e !== undefined) elems.push(e); }));
+                        if (!elems.length) return 'List<String>';
+                        return 'List<' + typeOf(elems, path + 'Item', key + 'Item') + '>';
+                    }
+                    if (t === 'boolean') return 'Boolean';
+                    if (t === 'number') return numberType(vals);
+                    if (t === 'string') return stringType(vals);
+                }
+                if (types.size > 1 && [...types].every(t => t === 'number')) return numberType(vals);
+                return 'String';
+            }
+            function buildClass(objs, path, base) {
+                const sig = shallowSig(objs);
+                for (const [n, c] of classes) if (c.sig === sig) return n;
+                let name = pascal(base) + opts.suffix, i = 2;
+                while (classes.has(name)) name = pascal(base) + opts.suffix + (i++);
+                const cls = { sig, fields: [], path };
+                classes.set(name, cls);
+                const keyOrder = [], samples = new Map(), nullSeen = new Set();
+                objs.forEach(o => Object.keys(o).forEach(k => {
+                    if (!samples.has(k)) { samples.set(k, []); keyOrder.push(k); }
+                    const v = o[k];
+                    if (v === null || v === undefined) nullSeen.add(k); else samples.get(k).push(v);
+                }));
+                const usedNames = new Set();
+                keyOrder.forEach(k => {
+                    const vals = samples.get(k);
+                    const type = vals.length ? typeOf(vals, path ? path + '.' + k : k, k) : 'String';
+                    let fname = camelKey(k), j = 2;
+                    while (usedNames.has(fname)) fname = camelKey(k) + (j++);
+                    usedNames.add(fname);
+                    cls.fields.push({ name: fname, key: k, type, nullable: nullSeen.has(k) || !vals.length });
+                });
+                return name;
+            }
+            let rootNote = '', rootName;
+            if (Array.isArray(value)) {
+                const objs = value.filter(v => jtype(v) === 'object');
+                if (!objs.length) throw new Error('根为数组但元素不是对象, 无法生成 Bean');
+                rootName = buildClass(objs, '', opts.rootName);
+                rootNote = `// 根为 JSON 数组: 请使用 List<${rootName}> 接收`;
+            } else if (jtype(value) === 'object') {
+                rootName = buildClass([value], '', opts.rootName);
+            } else throw new Error('根节点必须是对象或对象数组');
+            const names = [...classes.keys()].reverse();
+            const code = names.map(n => emitBeanClass(n, classes.get(n), opts)).join('\n\n');
+            return { code: (rootNote ? rootNote + '\n\n' : '') + code, rootName, count: classes.size };
+        }
+        // @JsonProperty 条件输出: 仅当 JSON 键名 ≠ Bean 字段名时添加注解, 且仅该类引入 import
+        function emitBeanClass(name, cls, opts) {
+            const imports = new Set(['lombok.Data', 'lombok.NoArgsConstructor', 'io.swagger.v3.oas.annotations.media.Schema']);
+            if (opts.builder) imports.add('lombok.Builder');
+            if (opts.allArgs) imports.add('lombok.AllArgsConstructor');
+            let needJsonProp = false;
+            cls.fields.forEach(f => {
+                if (f.type.startsWith('List<')) imports.add('java.util.List');
+                if (f.type.includes('LocalDateTime')) imports.add('java.time.LocalDateTime');
+                if (f.type.includes('LocalDate')) imports.add('java.time.LocalDate');
+                if (f.type === 'BigDecimal') imports.add('java.math.BigDecimal');
+                if (opts.jsonProp && f.key !== f.name) needJsonProp = true;
+            });
+            if (needJsonProp) imports.add('com.fasterxml.jackson.annotation.JsonProperty');
+            const ann = ['@Data'];
+            if (opts.builder) ann.push('@Builder');
+            ann.push('@NoArgsConstructor');
+            if (opts.allArgs) ann.push('@AllArgsConstructor');
+            ann.push(`@Schema(description = "${descEscape(name)} 数据结构")`);
+            const body = cls.fields.map(f => {
+                let s = `    @Schema(description = "${descEscape(f.key)}"${f.nullable ? ', nullable = true' : ''})\n`;
+                if (opts.jsonProp && f.key !== f.name) s += `    @JsonProperty("${descEscape(f.key)}")\n`;
+                s += `    private ${f.type} ${f.name};`;
+                return s;
+            }).join('\n\n');
+            return `// ========== ${name}.java ==========\n` +
+                [...imports].sort().map(i => `import ${i};`).join('\n') + '\n\n' +
+                ann.join('\n') + `\npublic class ${name} {\n\n${body}\n}`;
+        }
+        function showBeanError(m) { els.beanErrorText.textContent = m; els.beanError.classList.remove('hidden'); }
+        function hideBeanError() { els.beanError.classList.add('hidden'); }
+        function doBeanConvert(manual) {
+            const src = els.beanInput.value; hideBeanError();
+            if (!src.trim()) { els.beanOutput.value = ''; els.beanStats.innerText = '输入 0 字符 → 0 个类'; return; }
+            const run = () => {
+                try {
+                    const p = tryParse(src);
+                    if (!p.ok) throw new Error('输入不是合法 JSON: ' + p.e.message);
+                    const r = jsonToBeans(p.v, {
+                        rootName: (document.getElementById('beanRootName').value.trim() || 'Root'),
+                        suffix: (document.getElementById('beanSuffix').value.trim() || ''),
+                        builder: document.getElementById('beanBuilder').checked,
+                        allArgs: document.getElementById('beanAllArgs').checked,
+                        bigDecimal: document.getElementById('beanBigDec').checked,
+                        jsonProp: document.getElementById('beanJsonProp').checked
+                    });
+                    els.beanOutput.value = r.code;
+                    els.beanStats.innerText = `输入 ${src.length} 字符 → ${r.count} 个类 (根: ${r.rootName})`;
+                } catch (e) {
+                    els.beanOutput.value = ''; showBeanError(e.message);
+                    els.beanStats.innerText = `输入 ${src.length} 字符 → 生成失败`;
+                }
+            };
+            if (manual) withLoading('生成 Bean 中...', run); else run();
+        }
+        function copyBeanOutput() { if (!els.beanOutput.value) return; navigator.clipboard.writeText(els.beanOutput.value); flashBtn('button[onclick="copyBeanOutput()"]'); }
+        function loadBeanSample() {
+            els.beanInput.value = JSON.stringify({
+                "orderId": 2096866548763287554, "orderNo": "SO-2026-0001", "amount": 128.5, "paid": true,
+                "orderDate": "2026-09-08", "payTime": "2026-09-08T14:23:10Z", "remark": null,
+                "customer": { "customerId": 1, "name": "张三", "vip": false, "birthday": "1990-01-01" },
+                "items": [
+                    { "skuId": 101, "skuName": "零件A", "price": 64.25, "qty": 2, "shipDate": "2026-09-09" },
+                    { "skuId": 102, "skuName": "零件B", "price": 64.25, "qty": 1, "shipDate": null }
+                ],
+                "tags": ["urgent", "offline"]
+            }, null, 4);
+            propagateFrom(els.beanInput);
+            doBeanConvert(true);
+        }
+
+        // ================= Utils =================
+        function countKeys(o) { let c = 0; (function rec(x) { if (x && typeof x === 'object') for (const k in x) { c++; rec(x[k]); } })(o); return c; }
+        function formatBytes(b) { if (!+b) return '0 B'; const k = 1024, s = ['B','KB','MB','GB']; const i = Math.floor(Math.log(b) / Math.log(k)); return `${parseFloat((b / Math.pow(k, i)).toFixed(1))} ${s[i]}`; }
     </script>
 </body>
 </html>
