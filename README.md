@@ -1,158 +1,156 @@
 # JSON Master Pro
 
-> 纯前端 JSON 工具集，模块化架构，GitHub Pages 一键部署
+🚀 一个纯前端的现代化 JSON 工具集，无需后端，开箱即用。支持格式化、对比、转换、Mock 数据生成、JSONPath 查询及性能分析等功能。
 
-## 🚀 快速开始
+![GitHub Pages](https://img.shields.io/badge/deploy-GitHub%20Pages-blue?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![No Backend](https://img.shields.io/badge/backend-none-orange?style=flat-square)
 
-1. 克隆仓库到 GitHub
-2. 启用 GitHub Pages 服务
-3. 访问生成的 URL 即可使用
+## ✨ 在线体验
 
-无需任何构建步骤，所有依赖通过 CDN 加载。
+直接访问 [GitHub Pages 演示地址](https://your-username.github.io/json-master-pro/) (请替换为您的实际地址)
 
-## ✨ 核心功能
+## 🎯 核心功能
 
-### 基础工具
-| 模块 | 图标 | 功能描述 |
-|------|------|----------|
-| **格式化** | `fa-code` | JSON 美化/压缩，支持复制 |
-| **树视图** | `fa-sitemap` | 可折叠展开的交互式树形结构 |
-| **对比** | `fa-columns` | 左右两栏差异对比，导航跳转 |
-| **String 转换** | `fa-exchange-alt` | JSON ⇄ 字符串双向转换 |
+### 📝 基础工具
+- **JSON 格式化/压缩**: 智能缩进，语法高亮，支持搜索匹配
+- **JSON 树视图**: 可折叠/展开的交互式树形结构，支持节点路径复制
+- **JSON 对比**: 左右栏差异对比，高亮显示增删改，支持快速跳转
+- **JSON ⇄ String**: 字符串转义/反转义，支持循环解套和美化输出
+- **JSON ⇄ Java**: 
+  - 生成 Java Map 代码 (支持 var 关键字)
+  - 生成 Java Bean (Lombok @Builder, @Data, Jackson 注解)
 
-### 代码生成
-| 模块 | 图标 | 功能描述 |
-|------|------|----------|
-| **Java Map** | `fa-coffee` | 生成嵌套 HashMap/ArrayList 代码 |
-| **Java Bean** | `fa-file-code` | 生成 Lombok + Swagger 注解的 Bean 类 |
-
-### 高级功能
-| 模块 | 图标 | 功能描述 |
-|------|------|----------|
-| **Mock 数据** | `fa-wand-magic-sparkles` | 基于 Faker.js 生成真实测试数据 |
-| **查询过滤** | `fa-search` | 支持 JSONPath 和 JMESPath 查询语法 |
-| **性能分析** | `fa-chart-bar` | 统计大小、深度、类型分布、重复值 |
+### 🆕 高级功能
+- **🎭 Mock 数据生成**: 
+  - 基于 JSON 结构或 Java Bean 生成模拟数据
+  - 集成 Faker.js 生成真实姓名、邮箱、电话、地址等
+  - 支持自定义规则和批量数组生成 (1-100 条)
+  
+- **🔍 JSON 查询与过滤**:
+  - 支持 **JSONPath** (`$.store.book[*].author`)
+  - 支持 **JMESPath** (`people[*].name`)
+  - 在线执行测试，实时显示结果和类型统计
+  
+- **📊 性能分析**:
+  - 解析耗时统计 (毫秒级)
+  - 文件大小自适应显示 (B/KB/MB/GB)
+  - 键值对数量、最大深度计算
+  - Null 值统计、重复值检测
+  - 数据类型分布可视化
 
 ## 🏗️ 技术架构
 
+采用模块化设计，便于扩展和维护：
+
 ```
-JSON Master Pro
-├── index.html              # 主框架 (零业务逻辑)
+json-master-pro/
+├── index.html              # 主框架 (UI 布局 + CDN 依赖)
 ├── js/
 │   ├── core/
-│   │   ├── app.js          # 核心框架 (注册/切换/同步)
-│   │   ├── toast.js        # 通知系统
-│   │   └── utils.js        # JSON 工具函数
+│   │   ├── app.js          # 应用核心 (Tab 管理 + 模块注册)
+│   │   ├── toast.js        # 通知系统 (替代 alert)
+│   │   └── utils.js        # 通用工具函数
 │   └── modules/
 │       ├── format.js       # 格式化模块
 │       ├── tree.js         # 树视图模块
 │       ├── compare.js      # 对比模块
 │       ├── convert.js      # 转换模块
-│       ├── java.js         # Java Map 模块
-│       ├── bean.js         # Java Bean 模块
-│       ├── mock.js         # Mock 数据模块
-│       ├── query.js        # 查询模块
-│       └── analyze.js      # 分析模块
-└── README.md
+│       ├── java.js         # Java 代码生成模块
+│       ├── mock.js         # Mock 数据生成模块 ⭐
+│       ├── query.js        # JSON 查询模块 ⭐
+│       └── analyze.js      # 性能分析模块 ⭐
 ```
 
-### 插件式注册机制
+### 模块注册机制
 
-每个模块独立封装，通过 `AppInstance.register()` 主动注册：
+每个功能模块独立实现，通过 `App.registerModule()` 注册到框架：
 
 ```javascript
-// 模块示例
-(function() {
-    const MyModule = {
-        name: '我的模块',
-        icon: 'fa-star',
-        init: (container) => { /* 渲染 UI */ },
-        activate: (input) => { /* Tab 激活时执行 */ },
-        deactivate: () => { /* Tab 离开时执行 */ }
-    };
-    
-    window.AppInstance.register('my-module', MyModule);
-})();
+// js/modules/mock.js 示例
+App.registerModule('mock', {
+  init() {
+    // 初始化逻辑
+  },
+  onInput(data) {
+    // 处理输入数据
+  }
+});
 ```
 
-**新增功能只需两步：**
-1. 创建 `js/modules/my-feature.js`
-2. 在 `index.html` 添加一行 `<script>` 标签
+## 🚀 快速开始
 
-无需修改任何现有代码！
+### 方式一：GitHub Pages 部署 (推荐)
 
-## 🛠️ 依赖库
+1. Fork 本仓库
+2. 启用 GitHub Pages (Settings → Pages → Source: main branch)
+3. 访问 `https://your-username.github.io/json-master-pro/`
 
-| 库 | 用途 | CDN |
-|---|------|-----|
-| TailwindCSS | 样式框架 | ✅ 已集成 |
-| FontAwesome | 图标库 | ✅ 已集成 |
-| Faker.js | Mock 数据生成 | ✅ 按需加载 |
-| JSONPath Plus | JSON 查询 | ✅ 按需加载 |
-| JMESPath | JSON 查询 | ✅ 按需加载 |
+**无需构建步骤，无需 Node.js，纯静态文件直接运行！**
+
+### 方式二：本地运行
+
+直接使用浏览器打开 `index.html` 即可：
+
+```bash
+# 方式 A: 直接双击打开
+open index.html
+
+# 方式 B: 使用本地服务器 (避免 CORS 问题)
+npx serve .
+# 或
+python3 -m http.server 8080
+```
 
 ## 🎨 特性亮点
 
-- ✅ **纯前端**：无后端依赖，数据安全
-- ✅ **模块化**：插件式架构，易扩展
-- ✅ **全局同步**：所有模块共享输入框数据
-- ✅ **Toast 通知**：无打断式 alert，体验流畅
-- ✅ **暗色主题**：护眼配色，JetBrains Mono 字体
-- ✅ **响应式**：适配各种屏幕尺寸
-- ✅ **GitHub Pages**：一键部署，免费托管
+- ✅ **纯前端**: 无后端依赖，数据完全在本地处理，安全隐私
+- ✅ **模块化**: Tab 功能独立拆分，易于扩展新功能
+- ✅ **响应式**: 适配桌面和移动端，暗色主题护眼
+- ✅ **高性能**: 输入防抖处理，大数据量优化
+- ✅ **友好提示**: 全 Toast 通知系统，无打断式 alert
+- ✅ **全球同步**: 所有输入框实时联动，一处修改处处更新
+- ✅ **零配置**: 开箱即用，无需安装任何依赖
 
-## 📝 使用示例
+## 📦 依赖库 (CDN 引入)
 
-### Mock 数据生成
-```json
-{
-  "count": 5,
-  "template": {
-    "id": "@integer",
-    "name": "@name",
-    "email": "@email",
-    "phone": "@phone"
-  }
-}
-```
+| 库 | 用途 |
+|---|---|
+| TailwindCSS | 样式框架 |
+| FontAwesome | 图标库 |
+| JSONPath Plus | JSONPath 查询 |
+| JMESPath | JMESPath 查询 |
+| Faker.js | Mock 数据生成 |
 
-### JSONPath 查询
-```
-$.store.book[*].author
-$..price
-$.book[?(@.price < 10)]
-```
-
-### JMESPath 查询
-```
-people[*].name
-{foo: bar, baz: qux}
-sort_by(people, &age)
-```
+所有依赖均通过 CDN 引入，无需本地安装。
 
 ## 🔧 开发指南
 
-### 本地开发
-```bash
-# 任意 HTTP 服务器即可
-npx serve .
-# 或
-python -m http.server 8080
+### 添加新功能模块
+
+1. 在 `js/modules/` 创建新文件，如 `feature.js`
+2. 实现模块接口并注册：
+
+```javascript
+App.registerModule('feature', {
+  init() { console.log('Initialized'); },
+  onInput(data) { /* 处理数据 */ }
+});
 ```
 
-### 添加新模块
-1. 在 `js/modules/` 创建新文件
-2. 实现 `init`, `activate`, `deactivate` 方法
-3. 调用 `AppInstance.register()` 注册
-4. 在 `index.html` 引入脚本
+3. 在 `index.html` 添加对应的 Tab 按钮和面板
+4. 完成！
 
-### 自定义样式
-修改 `index.html` 中的 `<style>` 标签，Tailwind 支持任意 class。
+## 🤝 贡献指南
 
-## 📄 License
+欢迎提交 Issue 和 Pull Request！
+
+## 📄 许可证
 
 MIT License
 
 ---
 
-**在线演示**: [GitHub Pages](https://yourusername.github.io/json-master-pro/)
+**Made with ❤️ by JSON Master Pro Team**
+
+⭐ 如果这个项目对你有帮助，请给个 Star 支持一下！

@@ -5,7 +5,7 @@ node_modules/
 # Build artifacts
 dist/
 build/
-*.js.map
+target/
 
 # Logs and temp files
 *.log
@@ -31,8 +31,6 @@ __pycache__/
 *.jar
 *.war
 *.ear
-target/
-.gradle/
 
 # C/C++
 *.o
@@ -61,8 +59,19 @@ target/
 *.Z
 *.lz
 *.lzo
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.tar.zst
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+.nyc_output/
+coverage/
+
+# System
+.DS_Store
+Thumbs.db
 ```
