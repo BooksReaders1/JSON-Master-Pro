@@ -1,109 +1,73 @@
-// JSON ⇄ Java Map Module
-const JavaModule = {
-    inputEl: null,
-    outputEl: null,
+// Java Map 模块
+(function() {
+    const JavaModule = {
+        name: 'Java Map',
+        icon: 'fa-coffee',
+        
+        init: function(container) {
+            container.innerHTML = `
+                <div class="flex flex-col h-full gap-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">JSON → Java Map</h3>
+                        <button id="java-run" class="btn-primary"><i class="fas fa-play"></i> 生成代码</button>
+                    </div>
+                    <textarea id="java-output" class="editor-box flex-1" readonly placeholder="生成的 Java Map 代码"></textarea>
+                </div>
+            `;
 
-    init() {
-        this.inputEl = document.getElementById('javaInput');
-        this.outputEl = document.getElementById('javaOutput');
-        console.log('[JavaModule] Initialized');
-    },
+            document.getElementById('java-run').onclick = () => this.generate();
+        },
 
-    onActivate() {
-        const mainInput = document.getElementById('inputJson');
-        if (mainInput && mainInput.value.trim()) {
-            this.inputEl.value = mainInput.value;
-        }
-    },
+        activate: function(input) {
+            this.input = input;
+        },
 
-    onSync(data) {
-        this.inputEl.value = data;
-        if (document.getElementById('viewJava').classList.contains('hidden') === false) {
-            this.doJavaConvert();
-        }
-    },
-
-    doJavaConvert() {
-        const input = this.inputEl.value.trim();
-        if (!input) {
-            this.outputEl.value = '';
-            return;
-        }
-
-        try {
-            const obj = JSON.parse(input);
-            const result = this.convertToJavaMap(obj, 0);
-            this.outputEl.value = result;
-            showToast('转换完成：JSON → Java Map', 'success');
-        } catch (e) {
-            showToast('JSON 解析错误：' + e.message, 'error');
-            this.outputEl.value = '';
-        }
-    },
-
-    convertToJavaMap(obj, indent) {
-        const spaces = ' '.repeat(indent * 4);
-        const nextSpaces = ' '.repeat((indent + 1) * 4);
-
-        if (obj === null) {
-            return 'null';
-        }
-
-        if (Array.isArray(obj)) {
-            if (obj.length === 0) {
-                return 'new ArrayList<>()';
+        generate: function() {
+            const parsed = JSONUtils.parse(this.input);
+            if (parsed === null) {
+                showToast('无效的 JSON', 'error');
+                return;
             }
+
+            const code = this.convertToMap(parsed, 0);
+            document.getElementById('java-output').value = code;
+            showToast('生成成功', 'success');
+        },
+
+        convertToMap: function(obj, indent) {
+            const pad = '  '.repeat(indent);
             
-            let result = 'new ArrayList<>(Arrays.asList(\n' + nextSpaces;
-            const items = obj.map(item => this.convertToJavaMap(item, indent + 1));
-            result += items.join(',\n' + nextSpaces);
-            result += '\n' + spaces + '))';
-            return result;
-        }
+            if (obj === null) return 'null';
+            if (typeof obj === 'boolean') return String(obj);
+            if (typeof obj === 'number') {
+                if (Number.isInteger(obj) && Math.abs(obj) <= Number.MAX_SAFE_INTEGER) {
+                    return String(obj);
+                }
+                return `new java.math.BigDecimal("${obj}")`;
+            }
+            if (typeof obj === 'string') {
+                return `"${obj.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+            }
 
-        if (typeof obj === 'object') {
+            if (Array.isArray(obj)) {
+                if (obj.length === 0) return 'new java.util.ArrayList<>()';
+                const items = obj.map(item => this.convertToMap(item, indent + 1)).join(',\n' + pad + '  ');
+                return `new java.util.ArrayList<>() {{\n${pad}  ${items.split('\n').join('\n' + pad + '  ')}\n${pad}}}`;
+            }
+
             const keys = Object.keys(obj);
-            if (keys.length === 0) {
-                return 'new HashMap<>()';
-            }
+            if (keys.length === 0) return 'new java.util.HashMap<>()';
+            
+            const entries = keys.map(key => {
+                const value = this.convertToMap(obj[key], indent + 1);
+                return `${pad}  put("${key}", ${value});`;
+            }).join('\n');
 
-            let result = 'new HashMap<>() {{\n';
-            keys.forEach(key => {
-                const value = obj[key];
-                const javaKey = key.includes(' ') || key.includes('-') ? `"${key}"` : `"${key}"`;
-                const javaValue = this.convertToJavaMap(value, indent + 1);
-                result += nextSpaces + `put(${javaKey}, ${javaValue});\n`;
-            });
-            result += spaces + '}}';
-            return result;
+            return `new java.util.HashMap<>() {{\n${entries}\n${pad}}}`;
         }
+    };
 
-        if (typeof obj === 'string') {
-            return `"${obj.replace(/"/g, '\\"')}"`;
-        }
-
-        if (typeof obj === 'boolean') {
-            return obj.toString();
-        }
-
-        if (typeof obj === 'number') {
-            if (Number.isInteger(obj)) {
-                return String(obj);
-            }
-            // Check if it's a large number that should be BigDecimal
-            if (String(obj).includes('e') || String(obj).length > 15) {
-                return `new BigDecimal("${obj}")`;
-            }
-            return String(obj);
-        }
-
-        return String(obj);
-    },
-
-    getContentForCopy() {
-        return this.outputEl?.value || '';
+    if (window.AppInstance) {
+        window.AppInstance.register('java', JavaModule);
     }
-};
-
-App.registerModule('java', JavaModule);
-window.doJavaConvert = () => JavaModule.doJavaConvert();
+})();

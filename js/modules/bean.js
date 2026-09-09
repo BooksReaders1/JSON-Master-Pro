@@ -1,171 +1,96 @@
-// JSON → Java Bean Module
-const BeanModule = {
-    inputEl: null,
-    outputEl: null,
-
-    init() {
-        this.inputEl = document.getElementById('beanInput');
-        this.outputEl = document.getElementById('beanOutput');
-        console.log('[BeanModule] Initialized');
-    },
-
-    onActivate() {
-        const mainInput = document.getElementById('inputJson');
-        if (mainInput && mainInput.value.trim()) {
-            this.inputEl.value = mainInput.value;
-        }
-    },
-
-    onSync(data) {
-        this.inputEl.value = data;
-        if (document.getElementById('viewBean').classList.contains('hidden') === false) {
-            this.doBeanConvert();
-        }
-    },
-
-    doBeanConvert() {
-        const input = this.inputEl.value.trim();
-        if (!input) {
-            this.outputEl.value = '';
-            return;
-        }
-
-        try {
-            const obj = JSON.parse(input);
-            const result = this.generateBean(obj, 'Root');
-            this.outputEl.value = result;
-            showToast('Java Bean 生成完成', 'success');
-        } catch (e) {
-            showToast('JSON 解析错误：' + e.message, 'error');
-            this.outputEl.value = '';
-        }
-    },
-
-    generateBean(obj, className) {
-        const classes = [];
-        this.collectClasses(obj, className, classes);
+// Java Bean 模块
+(function() {
+    const BeanModule = {
+        name: 'Java Bean',
+        icon: 'fa-file-code',
         
-        let result = 'import lombok.Builder;\n';
-        result += 'import lombok.Data;\n';
-        result += 'import lombok.NoArgsConstructor;\n';
-        result += 'import lombok.AllArgsConstructor;\n';
-        result += 'import io.swagger.v3.oas.annotations.media.Schema;\n';
-        result += 'import com.fasterxml.jackson.annotation.JsonProperty;\n\n';
-        
-        classes.forEach(cls => {
-            result += cls.code + '\n\n';
-        });
-        
-        return result.trim();
-    },
+        init: function(container) {
+            container.innerHTML = `
+                <div class="flex flex-col h-full gap-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">JSON → Java Bean</h3>
+                        <button id="bean-run" class="btn-primary"><i class="fas fa-play"></i> 生成代码</button>
+                    </div>
+                    <textarea id="bean-output" class="editor-box flex-1" readonly placeholder="生成的 Java Bean 代码 (Lombok + Swagger)"></textarea>
+                </div>
+            `;
 
-    collectClasses(obj, className, classes) {
-        const existing = classes.find(c => c.name === className);
-        if (existing) return existing.type;
+            document.getElementById('bean-run').onclick = () => this.generate();
+        },
 
-        const classInfo = { name: className, fields: [], code: '' };
-        classes.push(classInfo);
+        activate: function(input) {
+            this.input = input;
+        },
 
-        if (Array.isArray(obj)) {
-            if (obj.length > 0) {
-                const itemType = this.getTypeName(obj[0]);
-                if (itemType === 'object') {
-                    const nestedClassName = className + 'Item';
-                    const nestedType = this.collectClasses(obj[0], nestedClassName, classes);
-                    return `List<${nestedClassName}>`;
-                }
-                return `List<${this.getJavaType(itemType, obj[0])}>`;
+        generate: function() {
+            const parsed = JSONUtils.parse(this.input);
+            if (parsed === null) {
+                showToast('无效的 JSON', 'error');
+                return;
             }
-            return 'List<Object>';
-        }
 
-        if (typeof obj === 'object' && obj !== null) {
+            const classes = [];
+            this.generateClass(parsed, 'Root', classes);
+            
+            const code = classes.join('\n\n');
+            document.getElementById('bean-output').value = code;
+            showToast('生成成功', 'success');
+        },
+
+        generateClass: function(obj, className, classes) {
+            if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) return;
+
+            const fields = [];
+            const nestedClasses = [];
+            let fieldIndex = 0;
+
             for (const [key, value] of Object.entries(obj)) {
                 const fieldName = this.toCamelCase(key);
-                const typeName = this.getTypeName(value);
+                const fieldType = this.getJavaType(value, key, nestedClasses);
                 
-                let javaType;
-                if (typeName === 'object') {
-                    const nestedClassName = this.toPascalCase(fieldName);
-                    javaType = this.collectClasses(value, nestedClassName, classes);
-                } else if (typeName === 'array') {
-                    const itemType = this.getTypeName(value[0] || null);
-                    if (itemType === 'object' && value.length > 0) {
-                        const nestedClassName = this.toPascalCase(fieldName) + 'Item';
-                        const nestedType = this.collectClasses(value[0], nestedClassName, classes);
-                        javaType = `List<${nestedClassName}>`;
-                    } else {
-                        javaType = `List<${this.getJavaType(itemType, value[0] || null)}>`;
-                    }
-                } else {
-                    javaType = this.getJavaType(typeName, value);
-                }
-
-                const needsJsonProperty = key !== fieldName;
-                classInfo.fields.push({
-                    name: fieldName,
-                    type: javaType,
-                    originalKey: key,
-                    needsJsonProperty
-                });
+                const jsonProp = key !== fieldName ? `\n    @JsonProperty("${key}")` : '';
+                fields.push(`    ${jsonProp}\n    @Schema(description = "${key}")\n    private ${fieldType} ${fieldName};`);
             }
 
-            // Generate class code
-            let code = '@Data\n';
-            code += '@Builder\n';
-            code += '@NoArgsConstructor\n';
-            code += '@AllArgsConstructor\n';
-            code += `@Schema(description = "${className} 对象")\n`;
-            code += `public class ${className} {\n`;
-            
-            classInfo.fields.forEach(field => {
-                if (field.needsJsonProperty) {
-                    code += `    @JsonProperty("${field.originalKey}")\n`;
-                }
-                code += `    @Schema(description = "${field.name}")\n`;
-                code += `    private ${field.type} ${field.name};\n\n`;
-            });
-            
-            code += '}';
-            classInfo.code = code;
-            classInfo.type = className;
+            const classCode = `@Data\n@Builder\n@NoArgsConstructor\n@AllArgsConstructor\npublic class ${className} {\n${fields.join('\n')}\n}`;
+            classes.push(classCode);
+
+            for (const nested of nestedClasses) {
+                this.generateClass(nested.obj, nested.name, classes);
+            }
+        },
+
+        getJavaType: function(value, key, nestedClasses) {
+            if (value === null) return 'Object';
+            if (typeof value === 'boolean') return 'Boolean';
+            if (typeof value === 'number') {
+                return Number.isInteger(value) ? 'Integer' : 'Double';
+            }
+            if (typeof value === 'string') return 'String';
+
+            if (Array.isArray(value)) {
+                if (value.length === 0) return 'List<Object>';
+                const itemType = this.getJavaType(value[0], key, nestedClasses);
+                return `List<${itemType}>`;
+            }
+
+            // Nested object
+            const className = this.toPascalCase(key) + 'Info';
+            nestedClasses.push({ name: className, obj: value });
             return className;
+        },
+
+        toCamelCase: function(str) {
+            return str.replace(/([-_][a-z])/ig, $1 => $1.toUpperCase().replace('-', '').replace('_', ''));
+        },
+
+        toPascalCase: function(str) {
+            const camel = this.toCamelCase(str);
+            return camel.charAt(0).toUpperCase() + camel.slice(1);
         }
+    };
 
-        return this.getJavaType(this.getTypeName(obj), obj);
-    },
-
-    getTypeName(value) {
-        if (value === null) return 'null';
-        if (Array.isArray(value)) return 'array';
-        return typeof value;
-    },
-
-    getJavaType(typeName, value) {
-        switch (typeName) {
-            case 'string': return 'String';
-            case 'number': 
-                if (value !== null && !Number.isInteger(value)) return 'Double';
-                return 'Integer';
-            case 'boolean': return 'Boolean';
-            case 'null': return 'Object';
-            default: return 'Object';
-        }
-    },
-
-    toCamelCase(str) {
-        return str.replace(/[-_\s]+(.)?/g, (match, chr) => chr ? chr.toLowerCase() : '');
-    },
-
-    toPascalCase(str) {
-        const camel = this.toCamelCase(str);
-        return camel.charAt(0).toUpperCase() + camel.slice(1);
-    },
-
-    getContentForCopy() {
-        return this.outputEl?.value || '';
+    if (window.AppInstance) {
+        window.AppInstance.register('bean', BeanModule);
     }
-};
-
-App.registerModule('bean', BeanModule);
-window.doBeanConvert = () => BeanModule.doBeanConvert();
+})();
