@@ -1,224 +1,158 @@
-// JSON Compare Module - 差异对比
-const CompareModule = {
-    leftArea: null,
-    rightArea: null,
-    diffLeftContainer: null,
-    diffRightContainer: null,
-    diffLeftContent: null,
-    diffRightContent: null,
-    statsLeft: null,
-    statsRight: null,
-    diffNavCount: null,
-    btnEdit: null,
-    cmpHint: null,
-    diffMode: false,
-    diffs: [],
-    currentDiffIndex: -1,
-
-    init() {
-        this.leftArea = document.getElementById('compareLeft');
-        this.rightArea = document.getElementById('compareRight');
-        this.diffLeftContainer = document.getElementById('diffLeftContainer');
-        this.diffRightContainer = document.getElementById('diffRightContainer');
-        this.diffLeftContent = document.getElementById('diffLeftContent');
-        this.diffRightContent = document.getElementById('diffRightContent');
-        this.statsLeft = document.getElementById('statsLeft');
-        this.statsRight = document.getElementById('statsRight');
-        this.diffNavCount = document.getElementById('diffNavCount');
-        this.btnEdit = document.getElementById('btnEdit');
-        this.cmpHint = document.getElementById('cmpHint');
-        console.log('[CompareModule] Initialized');
-    },
-
-    onActivate() {
-        const mainInput = document.getElementById('inputJson');
-        if (mainInput && mainInput.value.trim() && !this.diffMode) {
-            this.leftArea.value = mainInput.value;
-        }
-    },
-
-    onSync(data) {
-        if (!this.diffMode) {
-            this.leftArea.value = data;
-        }
-    },
-
-    setDiffMode(isDiff) {
-        this.diffMode = isDiff;
-        if (isDiff) {
-            this.leftArea.classList.add('hidden');
-            this.rightArea.classList.add('hidden');
-            this.diffLeftContainer.classList.remove('hidden');
-            this.diffRightContainer.classList.remove('hidden');
-            this.btnEdit.classList.remove('hidden');
-            this.cmpHint.textContent = '正在查看对比结果';
-        } else {
-            this.leftArea.classList.remove('hidden');
-            this.rightArea.classList.remove('hidden');
-            this.diffLeftContainer.classList.add('hidden');
-            this.diffRightContainer.classList.add('hidden');
-            this.btnEdit.classList.add('hidden');
-            this.cmpHint.textContent = '左侧输入已全局同步 · 在右侧粘贴新 JSON 后点击"开始对比"';
-        }
-    },
-
-    doRunDiff() {
-        const leftStr = this.leftArea.value.trim();
-        const rightStr = this.rightArea.value.trim();
-
-        if (!leftStr || !rightStr) {
-            showToast('请确保左右两侧都输入了 JSON 内容', 'warning');
-            return;
-        }
-
-        try {
-            const leftObj = JSON.parse(leftStr);
-            const rightObj = JSON.parse(rightStr);
-            
-            this.diffs = [];
-            this.currentDiffIndex = -1;
-            
-            // Simple line-by-line diff for demo
-            const leftLines = JSON.stringify(leftObj, null, 2).split('\n');
-            const rightLines = JSON.stringify(rightObj, null, 2).split('\n');
-            
-            const result = this.computeDiff(leftLines, rightLines);
-            this.renderDiff(result);
-            this.setDiffMode(true);
-            
-            showToast(`对比完成：发现 ${this.diffs.length} 处差异`, 'success');
-        } catch (e) {
-            showToast('JSON 解析错误：' + e.message, 'error');
-        }
-    },
-
-    computeDiff(left, right) {
-        const result = { left: [], right: [] };
-        const maxLen = Math.max(left.length, right.length);
+// 对比模块
+(function() {
+    const CompareModule = {
+        name: '对比',
+        icon: 'fa-columns',
         
-        for (let i = 0; i < maxLen; i++) {
-            const l = left[i] || '';
-            const r = right[i] || '';
+        init: function(container) {
+            container.innerHTML = `
+                <div class="flex flex-col h-full gap-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">JSON 差异对比</h3>
+                        <div class="flex gap-2">
+                            <button id="cmp-diff" class="btn-primary"><i class="fas fa-search"></i> 开始对比</button>
+                            <button id="cmp-prev" class="btn-secondary"><i class="fas fa-arrow-up"></i> 上一处</button>
+                            <button id="cmp-next" class="btn-secondary"><i class="fas fa-arrow-down"></i> 下一处</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 flex-1 min-h-0">
+                        <div class="flex flex-col">
+                            <label class="text-xs text-gray-400 mb-2">原始 JSON</label>
+                            <textarea id="cmp-left" class="editor-box flex-1" placeholder="粘贴第一个 JSON"></textarea>
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="text-xs text-gray-400 mb-2">对比 JSON</label>
+                            <textarea id="cmp-right" class="editor-box flex-1" placeholder="粘贴第二个 JSON"></textarea>
+                        </div>
+                    </div>
+                    <div id="cmp-result" class="bg-gray-800 rounded-lg p-4 h-48 overflow-auto font-mono text-sm"></div>
+                </div>
+            `;
+
+            document.getElementById('cmp-diff').onclick = () => this.runDiff();
+            document.getElementById('cmp-prev').onclick = () => this.navigate(-1);
+            document.getElementById('cmp-next').onclick = () => this.navigate(1);
             
-            if (l === r) {
-                result.left.push({ type: 'same', line: i + 1, content: l });
-                result.right.push({ type: 'same', line: i + 1, content: r });
-            } else {
-                if (l) {
-                    result.left.push({ type: 'removed', line: i + 1, content: l });
-                    this.diffs.push({ type: 'removed', line: i + 1, side: 'left' });
+            this.diffIndex = -1;
+            this.diffs = [];
+        },
+
+        activate: function(input) {
+            if (input && !document.getElementById('cmp-left').value) {
+                document.getElementById('cmp-left').value = input;
+            }
+        },
+
+        runDiff: function() {
+            const leftStr = document.getElementById('cmp-left').value;
+            const rightStr = document.getElementById('cmp-right').value;
+            const resultDiv = document.getElementById('cmp-result');
+
+            const left = JSONUtils.parse(leftStr);
+            const right = JSONUtils.parse(rightStr);
+
+            if (left === null || right === null) {
+                showToast('请输入有效的 JSON', 'error');
+                return;
+            }
+
+            this.diffs = [];
+            this.compareObjects(left, right, '$');
+            
+            if (this.diffs.length === 0) {
+                resultDiv.innerHTML = '<div class="text-green-400">✅ 两个 JSON 完全相同</div>';
+                showToast('没有发现差异', 'success');
+                return;
+            }
+
+            this.renderDiffs(resultDiv);
+            this.diffIndex = 0;
+            showToast(`发现 ${this.diffs.length} 处差异`, 'warning');
+        },
+
+        compareObjects: function(left, right, path) {
+            if (typeof left !== typeof right) {
+                this.diffs.push({ path, type: 'type_change', left: left, right: right });
+                return;
+            }
+
+            if (left === null && right === null) return;
+            if (typeof left !== 'object') {
+                if (left !== right) {
+                    this.diffs.push({ path, type: 'value_change', left: left, right: right });
                 }
-                if (r) {
-                    result.right.push({ type: 'added', line: i + 1, content: r });
-                    this.diffs.push({ type: 'added', line: i + 1, side: 'right' });
+                return;
+            }
+
+            const leftKeys = Object.keys(left || {});
+            const rightKeys = Object.keys(right || {});
+
+            for (const key of leftKeys) {
+                const newPath = `${path}.${key}`;
+                if (!right || !(key in right)) {
+                    this.diffs.push({ path: newPath, type: 'removed', left: left[key] });
+                } else {
+                    this.compareObjects(left[key], right[key], newPath);
                 }
             }
+
+            for (const key of rightKeys) {
+                const newPath = `${path}.${key}`;
+                if (!left || !(key in left)) {
+                    this.diffs.push({ path: newPath, type: 'added', right: right[key] });
+                }
+            }
+        },
+
+        renderDiffs: function(container) {
+            let html = `<div class="text-gray-400 mb-2">发现 ${this.diffs.length} 处差异:</div>`;
+            this.diffs.forEach((d, i) => {
+                const colors = {
+                    added: 'text-green-400',
+                    removed: 'text-red-400',
+                    value_change: 'text-yellow-400',
+                    type_change: 'text-purple-400'
+                };
+                const icons = {
+                    added: '+',
+                    removed: '-',
+                    value_change: '~',
+                    type_change: '!'
+                };
+                html += `<div class="${colors[d.type]} hover:bg-gray-700 p-1 cursor-pointer diff-item" data-index="${i}">
+                    ${icons[d.type]} ${d.path}: ${d.type}
+                </div>`;
+            });
+            container.innerHTML = html;
+
+            container.querySelectorAll('.diff-item').forEach(el => {
+                el.onclick = () => {
+                    this.diffIndex = parseInt(el.dataset.index);
+                    this.highlightDiff();
+                };
+            });
+        },
+
+        navigate: function(dir) {
+            if (this.diffs.length === 0) return;
+            this.diffIndex += dir;
+            if (this.diffIndex < 0) this.diffIndex = this.diffs.length - 1;
+            if (this.diffIndex >= this.diffs.length) this.diffIndex = 0;
+            this.highlightDiff();
+        },
+
+        highlightDiff: function() {
+            const items = document.querySelectorAll('.diff-item');
+            items.forEach((el, i) => {
+                el.classList.toggle('bg-blue-600', i === this.diffIndex);
+            });
+            if (items[this.diffIndex]) {
+                items[this.diffIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
-        
-        return result;
-    },
+    };
 
-    renderDiff(result) {
-        let leftHtml = '';
-        let rightHtml = '';
-        
-        result.left.forEach(item => {
-            let className = '';
-            let indicator = ' ';
-            if (item.type === 'added') { className = 'bg-added'; indicator = '+'; }
-            else if (item.type === 'removed') { className = 'bg-removed'; indicator = '-'; }
-            else if (item.type === 'modified') { className = 'bg-modified'; indicator = '~'; }
-            
-            leftHtml += `<div class="diff-row ${className}">
-                <span class="ln">${item.line}</span>
-                <span class="dg text-slate-500">${indicator}</span>
-                <span class="dc">${this.escapeHtml(item.content)}</span>
-            </div>`;
-        });
-        
-        result.right.forEach(item => {
-            let className = '';
-            let indicator = ' ';
-            if (item.type === 'added') { className = 'bg-added'; indicator = '+'; }
-            else if (item.type === 'removed') { className = 'bg-removed'; indicator = '-'; }
-            else if (item.type === 'modified') { className = 'bg-modified'; indicator = '~'; }
-            
-            rightHtml += `<div class="diff-row ${className}">
-                <span class="ln">${item.line}</span>
-                <span class="dg text-slate-500">${indicator}</span>
-                <span class="dc">${this.escapeHtml(item.content)}</span>
-            </div>`;
-        });
-        
-        this.diffLeftContent.innerHTML = leftHtml;
-        this.diffRightContent.innerHTML = rightHtml;
-        
-        // Sync scroll
-        this.diffLeftContainer.addEventListener('scroll', () => {
-            this.diffRightContainer.scrollTop = this.diffLeftContainer.scrollTop;
-        });
-        
-        this.updateStats();
-    },
-
-    updateStats() {
-        const added = this.diffs.filter(d => d.type === 'added').length;
-        const removed = this.diffs.filter(d => d.type === 'removed').length;
-        
-        this.statsLeft.textContent = `删除：${removed}`;
-        this.statsRight.textContent = `新增：${added}`;
-        this.diffNavCount.textContent = `${this.diffs.length} 处差异`;
-    },
-
-    navigateDiff(direction) {
-        if (this.diffs.length === 0) return;
-        
-        this.currentDiffIndex += direction;
-        if (this.currentDiffIndex < 0) this.currentDiffIndex = 0;
-        if (this.currentDiffIndex >= this.diffs.length) this.currentDiffIndex = this.diffs.length - 1;
-        
-        // Scroll to the diff location (simplified)
-        const lineNumber = this.diffs[this.currentDiffIndex].line;
-        const container = this.diffs[this.currentDiffIndex].side === 'left' 
-            ? this.diffLeftContainer 
-            : this.diffRightContainer;
-        
-        const rowHeight = 22;
-        container.scrollTop = (lineNumber - 1) * rowHeight - 100;
-        
-        showToast(`差异 ${this.currentDiffIndex + 1}/${this.diffs.length}`, 'info');
-    },
-
-    escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    },
-
-    syncLeft() {
-        const mainInput = document.getElementById('inputJson');
-        if (mainInput) {
-            this.leftArea.value = mainInput.value;
-            showToast('已从主输入同步到左侧', 'success');
-        }
-    },
-
-    syncRight() {
-        const mainInput = document.getElementById('inputJson');
-        if (mainInput && this.rightArea.value.trim()) {
-            mainInput.value = this.rightArea.value;
-            // Propagate to all inputs
-            App.propagateFrom(mainInput);
-            showToast('已将右侧内容回写到主输入并全局同步', 'success');
-        }
+    if (window.AppInstance) {
+        window.AppInstance.register('compare', CompareModule);
     }
-};
-
-App.registerModule('compare', CompareModule);
-window.doRunDiff = () => CompareModule.doRunDiff();
-window.setDiffMode = (isDiff) => CompareModule.setDiffMode(isDiff);
-window.navigateDiff = (dir) => CompareModule.navigateDiff(dir);
-window.syncLeft = () => CompareModule.syncLeft();
-window.syncRight = () => CompareModule.syncRight();
+})();

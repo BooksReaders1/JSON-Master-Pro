@@ -1,157 +1,111 @@
-/**
- * JSON 查询与过滤模块
- * 支持 JSONPath 和 JMESPath 查询语法
- */
+// JSON 查询模块 (JSONPath + JMESPath)
+(function() {
+    const QueryModule = {
+        name: '查询过滤',
+        icon: 'fa-search',
+        
+        init: function(container) {
+            container.innerHTML = `
+                <div class="flex flex-col h-full gap-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">JSON 查询 (JSONPath / JMESPath)</h3>
+                        <button id="query-run" class="btn-primary"><i class="fas fa-play"></i> 执行查询</button>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <label class="text-sm text-gray-400">语法:</label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="query-syntax" value="jsonpath" checked class="accent-blue-500">
+                            <span class="text-sm">JSONPath</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="query-syntax" value="jmespath" class="accent-blue-500">
+                            <span class="text-sm">JMESPath</span>
+                        </label>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="query-expression" class="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500" placeholder="输入查询表达式，如 $.store.book[*].author">
+                        <button id="query-insert-sample" class="btn-secondary text-xs px-3"><i class="fas fa-code"></i> 示例</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 flex-1 min-h-0">
+                        <div class="flex flex-col">
+                            <label class="text-xs text-gray-400 mb-2">输入 JSON</label>
+                            <textarea id="query-input" class="editor-box flex-1" placeholder="输入 JSON 数据"></textarea>
+                        </div>
+                        <div class="flex flex-col">
+                            <label class="text-xs text-gray-400 mb-2">查询结果</label>
+                            <textarea id="query-output" class="editor-box flex-1" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
 
-const QueryModule = {
-    elements: {},
-    currentMode: 'jsonpath',
-    
-    init(els) {
-        this.elements = {
-            input: document.getElementById('queryInput'),
-            expression: document.getElementById('queryExpression'),
-            output: document.getElementById('queryOutput'),
-            stats: document.getElementById('queryStats'),
-            modeSelect: document.getElementById('queryMode')
-        };
-        
-        // Setup mode switcher
-        if (this.elements.modeSelect) {
-            this.elements.modeSelect.addEventListener('change', (e) => {
-                this.currentMode = e.target.value;
-                this.insertExample();
-            });
-        }
-        
-        console.log('[QueryModule] Initialized');
-    },
-    
-    doQuery() {
-        const inputVal = this.elements.input.value.trim();
-        const expr = this.elements.expression.value.trim();
-        
-        if (!inputVal) {
-            showToast('请输入 JSON 数据', 'warning');
-            return;
-        }
-        
-        if (!expr) {
-            showToast('请输入查询表达式', 'warning');
-            return;
-        }
-        
-        App.withLoading('执行查询中...', () => {
-            try {
-                const data = JSON.parse(inputVal);
-                let result;
-                
-                if (this.currentMode === 'jsonpath') {
-                    // Use JSONPath
-                    const JSONPath = window.JSONPath || (window.jsonpath && window.jsonpath.JSONPath);
-                    if (!JSONPath) {
-                        throw new Error('JSONPath 库未加载');
-                    }
-                    result = JSONPath({ path: expr, json: data });
-                } else {
-                    // Use JMESPath
-                    const jmespath = window.jmespath;
-                    if (!jmespath) {
-                        throw new Error('JMESPath 库未加载');
-                    }
-                    result = jmespath.search(data, expr);
-                }
-                
-                // Format result
-                const formatted = typeof result === 'string' 
-                    ? result 
-                    : JSON.stringify(result, null, 4);
-                
-                this.elements.output.value = formatted;
-                
-                // Update stats
-                const resultType = Array.isArray(result) ? 'array' : typeof result;
-                const itemCount = Array.isArray(result) ? result.length : 1;
-                this.elements.stats.innerHTML = `
-                    <span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 rounded text-[10px] text-slate-300">
-                        <i class="fa-solid fa-code"></i> ${resultType}
-                    </span>
-                    <span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 rounded text-[10px] text-slate-300">
-                        <i class="fa-solid fa-list"></i> ${itemCount} 项
-                    </span>
-                `;
-                
-                showToast('查询成功', 'success');
-            } catch (e) {
-                this.elements.output.value = '';
-                this.elements.stats.innerHTML = '';
-                showToast(`${this.currentMode.toUpperCase()} 查询错误：${e.message}`, 'error');
+            document.getElementById('query-run').onclick = () => this.execute();
+            document.getElementById('query-insert-sample').onclick = () => this.insertSample();
+        },
+
+        activate: function(input) {
+            if (input && !document.getElementById('query-input').value) {
+                document.getElementById('query-input').value = input;
             }
-        });
-    },
-    
-    insertExample() {
-        const examples = {
-            jsonpath: [
-                '$.store.book[*].author',
-                '$..book[2]',
-                '$..book[?(@.price<10)]',
-                '$..book[?(@.category==\'fiction\')]'
-            ],
-            jmespath: [
-                'people[*].name',
-                'people[0].age',
-                'people[?age > `30`].name',
-                'reverse(sort_by(people, &age))'
-            ]
-        };
-        
-        const currentExamples = examples[this.currentMode] || [];
-        const example = currentExamples[Math.floor(Math.random() * currentExamples.length)];
-        this.elements.expression.value = example;
-        showToast(`已插入${this.currentMode.toUpperCase()}示例`, 'info');
-    },
-    
-    loadSample() {
-        const sample = {
-            "store": {
-                "book": [
-                    {"category": "reference", "author": "Nigel Rees", "title": "Sayings of the Century", "price": 8.95},
-                    {"category": "fiction", "author": "Evelyn Waugh", "title": "Sword of Honour", "price": 12.99},
-                    {"category": "fiction", "author": "Herman Melville", "title": "Moby Dick", "isbn": "0-553-21311-3", "price": 8.99},
-                    {"category": "fiction", "author": "J. R. R. Tolkien", "title": "The Lord of the Rings", "isbn": "0-395-19395-8", "price": 22.99}
-                ],
-                "bicycle": {"color": "red", "price": 19.95}
-            },
-            "expensive": 10
-        };
-        
-        this.elements.input.value = JSON.stringify(sample, null, 4);
-        showToast('已加载示例数据', 'info');
-    },
-    
-    getContentForCopy() {
-        return this.elements.output?.value || '';
-    },
-    
-    onActivate() {
-        // Focus expression input
-        if (this.elements.expression) {
-            this.elements.expression.focus();
+        },
+
+        execute: function() {
+            const inputStr = document.getElementById('query-input').value;
+            const expression = document.getElementById('query-expression').value.trim();
+            const outputEl = document.getElementById('query-output');
+            const syntax = document.querySelector('input[name="query-syntax"]:checked').value;
+
+            if (!inputStr || !expression) {
+                showToast('请输入 JSON 和查询表达式', 'warning');
+                return;
+            }
+
+            const data = JSONUtils.parse(inputStr);
+            if (data === null) {
+                showToast('无效的 JSON', 'error');
+                return;
+            }
+
+            try {
+                let result;
+                if (syntax === 'jsonpath') {
+                    if (typeof JSONPath === 'undefined') {
+                        showToast('JSONPath 库未加载', 'error');
+                        return;
+                    }
+                    result = JSONPath({ path: expression, json: data });
+                } else {
+                    if (typeof jmespath === 'undefined') {
+                        showToast('JMESPath 库未加载', 'error');
+                        return;
+                    }
+                    result = jmespath.search(data, expression);
+                }
+
+                outputEl.value = JSON.stringify(result, null, 2);
+                
+                const resultType = Array.isArray(result) ? `Array(${result.length})` : typeof result;
+                showToast(`查询成功 (${resultType})`, 'success');
+            } catch (e) {
+                outputEl.value = '';
+                showToast('查询错误：' + e.message, 'error');
+            }
+        },
+
+        insertSample: function() {
+            const syntax = document.querySelector('input[name="query-syntax"]:checked').value;
+            const inputEl = document.getElementById('query-expression');
+            
+            if (syntax === 'jsonpath') {
+                inputEl.value = '$.store.book[*].author';
+            } else {
+                inputEl.value = 'people[*].name';
+            }
+            showToast('已插入示例表达式', 'info');
         }
-    },
-    
-    onSync(value) {
-        if (this.elements.input) {
-            this.elements.input.value = value;
-        }
+    };
+
+    if (window.AppInstance) {
+        window.AppInstance.register('query', QueryModule);
     }
-};
-
-// Register module
-App.registerModule('query', QueryModule);
-
-// Global functions
-window.doQuery = () => QueryModule.doQuery();
-window.insertQueryExample = () => QueryModule.insertExample();
-window.loadQuerySample = () => QueryModule.loadSample();
+})();

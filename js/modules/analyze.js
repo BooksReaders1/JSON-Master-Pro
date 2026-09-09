@@ -1,172 +1,192 @@
-/**
- * 性能分析模块
- * JSON 大小统计、深度分析、重复值检测等
- */
+// 性能分析模块
+(function() {
+    const AnalyzeModule = {
+        name: '性能分析',
+        icon: 'fa-chart-bar',
+        
+        init: function(container) {
+            container.innerHTML = `
+                <div class="flex flex-col h-full gap-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">JSON 性能与结构分析</h3>
+                        <button id="analyze-run" class="btn-primary"><i class="fas fa-play"></i> 开始分析</button>
+                    </div>
+                    <div id="analyze-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <!-- 统计卡片由 JS 动态生成 -->
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 flex-1 min-h-0">
+                        <div class="bg-gray-800 rounded-lg p-4 overflow-auto">
+                            <h4 class="text-sm font-bold text-white mb-3">类型分布</h4>
+                            <div id="analyze-types" class="space-y-2"></div>
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-4 overflow-auto">
+                            <h4 class="text-sm font-bold text-white mb-3">详细信息</h4>
+                            <div id="analyze-details" class="text-sm text-gray-300 space-y-1"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
 
-const AnalyzeModule = {
-    elements: {},
-    
-    init(els) {
-        this.elements = {
-            input: document.getElementById('analyzeInput'),
-            result: document.getElementById('analyzeResult')
-        };
-        
-        console.log('[AnalyzeModule] Initialized');
-    },
-    
-    doAnalyze() {
-        const src = this.elements.input.value.trim();
-        
-        if (!src) {
-            this.elements.result.innerHTML = this.buildEmptyState();
-            return;
-        }
-        
-        App.withLoading('分析中...', () => {
-            try {
-                const startTime = performance.now();
-                const data = JSON.parse(src);
-                const parseTime = performance.now() - startTime;
-                
-                // Calculate metrics
-                const sizeBytes = new Blob([src]).size;
-                const keyCount = Utils.countKeys(data);
-                const maxDepth = Utils.calculateDepth(data);
-                const nullCount = Utils.countNulls(data);
-                const duplicates = Utils.findDuplicates(data);
-                const typeDist = Utils.getTypeDistribution(data);
-                
-                // Build results
-                const results = [
-                    { label: '解析时间', value: `${parseTime.toFixed(2)} ms`, icon: 'fa-stopwatch', color: 'text-blue-400' },
-                    { label: '文件大小', value: Utils.formatBytes(sizeBytes), icon: 'fa-database', color: 'text-emerald-400' },
-                    { label: '键值对数量', value: keyCount.toString(), icon: 'fa-key', color: 'text-purple-400' },
-                    { label: '最大深度', value: maxDepth.toString(), icon: 'fa-layer-group', color: 'text-amber-400' },
-                    { label: 'Null 值数量', value: nullCount.toString(), icon: 'fa-circle', color: 'text-slate-400' },
-                    { label: '重复值数量', value: duplicates.size.toString(), icon: 'fa-copy', color: 'text-red-400' }
-                ];
-                
-                // Build type distribution HTML
-                let typeHtml = '';
-                for (const [type, count] of Object.entries(typeDist)) {
-                    typeHtml += `<span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-700 rounded text-[10px] text-slate-300">${type}: ${count}</span>`;
-                }
-                
-                let html = '<div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">';
-                results.forEach(r => {
-                    html += `
-                        <div class="bg-slate-800/80 rounded-lg p-3 border border-slate-700 hover:border-slate-600 transition">
-                            <div class="flex items-center gap-2 mb-1">
-                                <i class="fa-solid ${r.icon} ${r.color}"></i>
-                                <span class="text-slate-400 text-xs">${r.label}</span>
-                            </div>
-                            <div class="text-lg font-bold text-white">${r.value}</div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                
-                // Type distribution
-                html += `
-                    <div class="bg-slate-800/80 rounded-lg p-3 border border-slate-700 mb-3">
-                        <h4 class="text-xs font-bold text-slate-300 mb-2">
-                            <i class="fa-solid fa-chart-pie mr-1"></i>类型分布
-                        </h4>
-                        <div class="flex flex-wrap gap-2">${typeHtml || '<span class="text-slate-500 text-xs">无数据</span>'}</div>
-                    </div>
-                `;
-                
-                // Duplicate details (if not too many)
-                if (duplicates.size > 0 && duplicates.size <= 10) {
-                    html += `
-                        <div class="bg-slate-800/80 rounded-lg p-3 border border-slate-700">
-                            <h4 class="text-xs font-bold text-slate-300 mb-2">
-                                <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i>重复值详情
-                            </h4>
-                            <div class="text-xs text-slate-400 space-y-1">
-                    `;
-                    duplicates.forEach(d => {
-                        const val = d.length > 50 ? d.substring(0, 50) + '...' : d;
-                        html += `<div class="truncate">• ${val}</div>`;
-                    });
-                    html += '</div></div>';
-                } else if (duplicates.size > 10) {
-                    html += `
-                        <div class="bg-slate-800/80 rounded-lg p-3 border border-slate-700">
-                            <p class="text-xs text-slate-400">
-                                <i class="fa-solid fa-info-circle mr-1"></i>
-                                共有 ${duplicates.size} 个重复值（超过 10 个不显示详情）
-                            </p>
-                        </div>
-                    `;
-                }
-                
-                this.elements.result.innerHTML = html;
-                showToast('分析完成', 'success');
-            } catch (e) {
-                this.elements.result.innerHTML = `
-                    <div class="bg-red-900/30 rounded-lg p-3 border border-red-700">
-                        <p class="text-red-400 text-xs">
-                            <i class="fa-solid fa-circle-exclamation mr-1"></i>${e.message}
-                        </p>
-                    </div>
-                `;
-                showToast(e.message, 'error');
+            document.getElementById('analyze-run').onclick = () => this.analyze();
+        },
+
+        activate: function(input) {
+            this.input = input;
+        },
+
+        analyze: function() {
+            const parsed = JSONUtils.parse(this.input);
+            if (parsed === null) {
+                showToast('无效的 JSON', 'error');
+                return;
             }
-        });
-    },
-    
-    buildEmptyState() {
-        return `
-            <div class="bg-slate-800/50 rounded-lg p-6 border border-slate-700 text-center">
-                <i class="fa-solid fa-chart-simple text-4xl text-slate-600 mb-3"></i>
-                <p class="text-slate-500 text-sm">请输入 JSON 数据进行性能分析</p>
-            </div>
-        `;
-    },
-    
-    loadSample() {
-        const sample = {
-            "users": [
-                {"id": 1, "name": "Alice", "email": "alice@example.com", "age": 25, "active": true},
-                {"id": 2, "name": "Bob", "email": "bob@example.com", "age": 30, "active": false},
-                {"id": 3, "name": "Charlie", "email": "charlie@example.com", "age": 35, "active": true, "metadata": null}
-            ],
-            "config": {
-                "theme": "dark",
-                "language": "zh-CN",
-                "notifications": true
-            },
-            "stats": {"total": 100, "active": 75, "inactive": 25}
-        };
-        
-        this.elements.input.value = JSON.stringify(sample, null, 4);
-        this.doAnalyze();
-    },
-    
-    getContentForCopy() {
-        return this.elements.input?.value || '';
-    },
-    
-    onActivate() {
-        if (this.elements.input?.value.trim()) {
-            this.doAnalyze();
+
+            const startTime = performance.now();
+            
+            // 基础统计
+            const size = new Blob([this.input]).size;
+            const keyCount = JSONUtils.countKeys(parsed);
+            const depth = JSONUtils.getDepth(parsed);
+            const nullCount = JSONUtils.countNulls(parsed);
+            
+            // 类型统计
+            const typeStats = this.countTypes(parsed);
+            
+            const endTime = performance.now();
+            const parseTime = (endTime - startTime).toFixed(2);
+
+            // 渲染统计卡片
+            this.renderStats(size, keyCount, depth, nullCount, parseTime);
+            
+            // 渲染类型分布
+            this.renderTypeStats(typeStats);
+            
+            // 渲染详细信息
+            this.renderDetails(parsed, size);
+
+            showToast('分析完成', 'success');
+        },
+
+        countTypes: function(obj, stats = {}) {
+            if (obj === null) {
+                stats.null = (stats.null || 0) + 1;
+                return stats;
+            }
+            
+            const type = Array.isArray(obj) ? 'array' : typeof obj;
+            stats[type] = (stats[type] || 0) + 1;
+
+            if (typeof obj === 'object' && obj !== null) {
+                const values = Array.isArray(obj) ? obj : Object.values(obj);
+                for (const v of values) {
+                    this.countTypes(v, stats);
+                }
+            }
+
+            return stats;
+        },
+
+        renderStats: function(size, keys, depth, nulls, time) {
+            const container = document.getElementById('analyze-stats');
+            const cards = [
+                { label: '文件大小', value: this.formatSize(size), icon: 'fa-database', color: 'text-blue-400' },
+                { label: '键值对数量', value: keys, icon: 'fa-key', color: 'text-green-400' },
+                { label: '最大深度', value: depth, icon: 'fa-layer-group', color: 'text-yellow-400' },
+                { label: 'Null 值数量', value: nulls, icon: 'fa-circle', color: 'text-red-400' },
+                { label: '解析时间', value: `${time}ms`, icon: 'fa-stopwatch', color: 'text-purple-400' }
+            ];
+
+            container.innerHTML = cards.map(card => `
+                <div class="bg-gray-800 rounded-lg p-4 flex items-center gap-3">
+                    <i class="fas ${card.icon} ${card.color} text-2xl"></i>
+                    <div>
+                        <div class="text-xs text-gray-400">${card.label}</div>
+                        <div class="text-lg font-bold text-white">${card.value}</div>
+                    </div>
+                </div>
+            `).join('');
+        },
+
+        renderTypeStats: function(stats) {
+            const container = document.getElementById('analyze-types');
+            const total = Object.values(stats).reduce((a, b) => a + b, 0);
+            
+            const colors = {
+                object: 'bg-blue-500',
+                array: 'bg-green-500',
+                string: 'bg-yellow-500',
+                number: 'bg-purple-500',
+                boolean: 'bg-pink-500',
+                null: 'bg-red-500'
+            };
+
+            container.innerHTML = Object.entries(stats).map(([type, count]) => {
+                const percent = ((count / total) * 100).toFixed(1);
+                return `
+                    <div class="flex items-center gap-2">
+                        <div class="w-20 text-xs text-gray-400">${type}</div>
+                        <div class="flex-1 bg-gray-700 rounded-full h-2">
+                            <div class="${colors[type] || 'bg-gray-500'} h-2 rounded-full" style="width: ${percent}%"></div>
+                        </div>
+                        <div class="w-16 text-xs text-gray-300 text-right">${count} (${percent}%)</div>
+                    </div>
+                `;
+            }).join('');
+        },
+
+        renderDetails: function(parsed, size) {
+            const container = document.getElementById('analyze-details');
+            const isArray = Array.isArray(parsed);
+            const topKeys = isArray ? [] : Object.keys(parsed).slice(0, 10);
+            
+            let html = `
+                <div class="mb-3"><span class="text-gray-400">根节点类型:</span> <span class="text-white">${isArray ? 'Array' : 'Object'}</span></div>
+                <div class="mb-3"><span class="text-gray-400">顶层元素数:</span> <span class="text-white">${isArray ? parsed.length : Object.keys(parsed).length}</span></div>
+            `;
+
+            if (!isArray && topKeys.length > 0) {
+                html += `<div class="mb-3"><span class="text-gray-400">顶层键名:</span><div class="mt-1 text-xs text-gray-300">${topKeys.join(', ')}</div></div>`;
+            }
+
+            // 重复值检测 (简单版)
+            const stringValues = [];
+            this.collectStrings(parsed, stringValues);
+            const duplicates = this.findDuplicates(stringValues);
+            if (duplicates.length > 0) {
+                html += `<div class="mb-3"><span class="text-gray-400">重复字符串值:</span><div class="mt-1 text-xs text-gray-300">${duplicates.slice(0, 5).join(', ')}${duplicates.length > 5 ? '...' : ''}</div></div>`;
+            }
+
+            container.innerHTML = html;
+        },
+
+        collectStrings: function(obj, arr) {
+            if (typeof obj === 'string') {
+                arr.push(obj);
+                return;
+            }
+            if (obj !== null && typeof obj === 'object') {
+                const values = Array.isArray(obj) ? obj : Object.values(obj);
+                values.forEach(v => this.collectStrings(v, arr));
+            }
+        },
+
+        findDuplicates: function(arr) {
+            const counts = {};
+            arr.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+            return Object.entries(counts)
+                .filter(([_, c]) => c > 1)
+                .map(([v, _]) => v)
+                .slice(0, 10);
+        },
+
+        formatSize: function(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
-    },
-    
-    onSync(value) {
-        if (this.elements.input) {
-            this.elements.input.value = value;
-            // Auto-analyze after short delay
-            setTimeout(() => this.doAnalyze(), 500);
-        }
+    };
+
+    if (window.AppInstance) {
+        window.AppInstance.register('analyze', AnalyzeModule);
     }
-};
-
-// Register module
-App.registerModule('analyze', AnalyzeModule);
-
-// Global functions
-window.doAnalyze = () => AnalyzeModule.doAnalyze();
-window.loadAnalyzeSample = () => AnalyzeModule.loadSample();
+})();

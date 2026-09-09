@@ -1,216 +1,109 @@
-/**
- * 应用框架 - 管理 Tab 切换和模块注册
- */
+// 核心应用框架 - 插件式注册架构
+class App {
+    constructor() {
+        this.modules = new Map();
+        this.currentModuleId = null;
+        this.globalInput = '';
+    }
 
-const App = {
-    modules: {},
-    currentTab: 'format',
-    elements: {},
-    
-    /**
-     * 注册功能模块
-     */
-    registerModule(id, module) {
-        this.modules[id] = module;
-        if (module.init && typeof module.init === 'function') {
-            module.init(this.elements);
-        }
-        console.log(`[App] Module registered: ${id}`);
-    },
-    
-    /**
-     * 初始化 DOM 元素引用
-     */
-    initElements() {
-        this.elements = {
-            // Input elements (global sync)
-            inputJson: document.getElementById('inputJson'),
-            treeInput: document.getElementById('treeInput'),
-            compareLeft: document.getElementById('compareLeft'),
-            convInput: document.getElementById('convInput'),
-            javaInput: document.getElementById('javaInput'),
-            beanInput: document.getElementById('beanInput'),
-            mockInput: document.getElementById('mockInput'),
-            queryInput: document.getElementById('queryInput'),
-            analyzeInput: document.getElementById('analyzeInput'),
-            
-            // Output containers
-            fmtOutput: document.getElementById('fmtOutput'),
-            fmtError: document.getElementById('fmtError'),
-            fmtErrorText: document.getElementById('fmtErrorText'),
-            treeOutput: document.getElementById('treeOutput'),
-            errorMsg: document.getElementById('errorMsg'),
-            errorText: document.getElementById('errorText'),
-            
-            // Loading overlay
-            loadingOverlay: document.getElementById('loadingOverlay'),
-            loadingText: document.getElementById('loadingText'),
-            
-            // Toast container will be created by Toast module
-        };
-        
-        // All synced inputs
-        this.syncedInputs = [
-            this.elements.inputJson,
-            this.elements.treeInput,
-            this.elements.compareLeft,
-            this.elements.convInput,
-            this.elements.javaInput,
-            this.elements.beanInput,
-            this.elements.mockInput,
-            this.elements.queryInput,
-            this.elements.analyzeInput
-        ];
-    },
-    
-    /**
-     * 切换 Tab
-     */
-    switchTab(tabId) {
-        // Hide all views
-        document.querySelectorAll('[id^="view"]').forEach(el => {
-            el.classList.add('hidden');
-        });
-        
-        // Deactivate all tabs
-        document.querySelectorAll('[id^="tab"]').forEach(el => {
-            el.classList.remove('tab-active');
-        });
-        
-        // Show selected view
-        const viewEl = document.getElementById(`view${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
-        const tabEl = document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`);
-        
-        if (viewEl) viewEl.classList.remove('hidden');
-        if (tabEl) tabEl.classList.add('tab-active');
-        
-        this.currentTab = tabId;
-        
-        // Call module's onActivate if exists
-        const module = this.modules[tabId];
-        if (module && module.onActivate) {
-            module.onActivate();
-        }
-        
-        console.log(`[App] Switched to tab: ${tabId}`);
-    },
-    
-    /**
-     * 同步所有输入框
-     */
-    propagateFrom(sourceElement) {
-        const value = sourceElement.value;
-        this.syncedInputs.forEach(input => {
-            if (input && input !== sourceElement) {
-                input.value = value;
-            }
-        });
-        
-        // Notify modules about sync
-        Object.values(this.modules).forEach(module => {
-            if (module.onSync && typeof module.onSync === 'function') {
-                module.onSync(value, sourceElement);
-            }
-        });
-    },
-    
-    /**
-     * 显示加载状态
-     */
-    showLoading(message = '处理中...') {
-        if (this.elements.loadingText) {
-            this.elements.loadingText.textContent = message;
-        }
-        if (this.elements.loadingOverlay) {
-            this.elements.loadingOverlay.style.display = 'flex';
-        }
-    },
-    
-    /**
-     * 隐藏加载状态
-     */
-    hideLoading() {
-        if (this.elements.loadingOverlay) {
-            this.elements.loadingOverlay.style.display = 'none';
-        }
-    },
-    
-    /**
-     * 带加载状态执行
-     */
-    withLoading(message, fn) {
-        this.showLoading(message);
-        setTimeout(() => {
-            try {
-                fn();
-            } finally {
-                this.hideLoading();
-            }
-        }, 50);
-    },
-    
-    /**
-     * 清空所有输入
-     */
-    clearAll() {
-        this.syncedInputs.forEach(input => {
-            if (input) input.value = '';
-        });
-        
-        // Clear outputs
-        if (this.elements.fmtOutput) this.elements.fmtOutput.innerHTML = '';
-        if (this.elements.treeOutput) this.elements.treeOutput.innerHTML = '';
-        
-        // Notify modules
-        Object.values(this.modules).forEach(module => {
-            if (module.onClear && typeof module.onClear === 'function') {
-                module.onClear();
-            }
-        });
-        
-        showToast('已清空所有内容', 'info');
-    },
-    
-    /**
-     * 复制结果到剪贴板
-     */
-    copyResult() {
-        let textToCopy = '';
-        
-        // Try to get content from current active module
-        const module = this.modules[this.currentTab];
-        if (module && module.getContentForCopy) {
-            textToCopy = module.getContentForCopy();
-        }
-        
-        if (!textToCopy) {
-            showToast('没有可复制的内容', 'warning');
+    // 模块主动注册自己
+    register(id, config) {
+        if (this.modules.has(id)) {
+            console.warn(`Module ${id} already registered.`);
             return;
         }
+        this.modules.set(id, config);
+        this.renderTabUI(id, config);
         
-        navigator.clipboard.writeText(textToCopy).then(() => {
-            showToast('已复制到剪贴板', 'success');
-        }).catch(err => {
-            showToast('复制失败：' + err.message, 'error');
-        });
-    },
-    
-    /**
-     * 启动应用
-     */
-    bootstrap() {
-        this.initElements();
-        
-        // Setup global functions
-        window.switchTab = (tabId) => this.switchTab(tabId);
-        window.clearAll = () => this.clearAll();
-        window.copyResult = () => this.copyResult();
-        window.propagateFrom = (source) => this.propagateFrom(source);
-        window.withLoading = (msg, fn) => this.withLoading(msg, fn);
-        
-        // Initialize default tab
-        this.switchTab('format');
-        
-        console.log('[App] Bootstrap complete');
+        // 第一个模块默认激活
+        if (this.modules.size === 1) {
+            setTimeout(() => this.switchTab(id), 100);
+        }
     }
-};
+
+    // 动态生成 Tab UI
+    renderTabUI(id, config) {
+        const tabsContainer = document.getElementById('tabs-container');
+        const contentContainer = document.getElementById('modules-container');
+
+        // 创建 Tab 按钮
+        const btn = document.createElement('button');
+        btn.id = `tab-btn-${id}`;
+        btn.className = 'tab-btn flex items-center gap-2 px-4 py-3 text-sm font-medium text-gray-400 hover:text-white transition-colors border-b-2 border-transparent whitespace-nowrap';
+        btn.innerHTML = `<i class="fas ${config.icon}"></i><span>${config.name}</span>`;
+        btn.onclick = () => this.switchTab(id);
+        tabsContainer.appendChild(btn);
+
+        // 创建内容面板
+        const panel = document.createElement('div');
+        panel.id = `module-panel-${id}`;
+        panel.className = 'module-panel hidden flex-1 overflow-y-auto h-full';
+        if (config.init) {
+            config.init(panel);
+        }
+        contentContainer.appendChild(panel);
+    }
+
+    switchTab(moduleId) {
+        if (!this.modules.has(moduleId)) return;
+
+        // 卸载旧模块
+        if (this.currentModuleId) {
+            const oldMod = this.modules.get(this.currentModuleId);
+            if (oldMod.deactivate) oldMod.deactivate();
+            
+            const oldBtn = document.getElementById(`tab-btn-${this.currentModuleId}`);
+            const oldPanel = document.getElementById(`module-panel-${this.currentModuleId}`);
+            if (oldBtn) {
+                oldBtn.classList.replace('text-white', 'text-gray-400');
+                oldBtn.classList.replace('border-blue-500', 'border-transparent');
+            }
+            if (oldPanel) oldPanel.classList.add('hidden');
+        }
+
+        // 激活新模块
+        const newMod = this.modules.get(moduleId);
+        const newBtn = document.getElementById(`tab-btn-${moduleId}`);
+        const newPanel = document.getElementById(`module-panel-${moduleId}`);
+        
+        if (newBtn) {
+            newBtn.classList.replace('text-gray-400', 'text-white');
+            newBtn.classList.replace('border-transparent', 'border-blue-500');
+        }
+        if (newPanel) newPanel.classList.remove('hidden');
+
+        this.currentModuleId = moduleId;
+
+        // 同步数据并执行
+        if (newMod.activate) {
+            newMod.activate(this.globalInput);
+        }
+    }
+
+    setupGlobalInput() {
+        const inputEl = document.getElementById('global-json-input');
+        if (!inputEl) return;
+        
+        let timeout;
+        inputEl.addEventListener('input', (e) => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                this.globalInput = e.target.value;
+                if (this.currentModuleId) {
+                    const mod = this.modules.get(this.currentModuleId);
+                    if (mod && mod.activate) mod.activate(this.globalInput);
+                }
+            }, 300);
+        });
+    }
+
+    init() {
+        this.setupGlobalInput();
+        console.log('🚀 JSON Master Pro initialized');
+    }
+}
+
+window.AppInstance = new App();
+document.addEventListener('DOMContentLoaded', () => {
+    window.AppInstance.init();
+});

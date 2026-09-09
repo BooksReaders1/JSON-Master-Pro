@@ -1,173 +1,124 @@
-// JSON ⇄ String Convert Module
-const ConvertModule = {
-    currentDir: 'j2s',
-    inputEl: null,
-    outputEl: null,
-    dirJ2S: null,
-    dirS2J: null,
-    optGroupJ2S: null,
-    optGroupS2J: null,
-    optQuotes: null,
-    optDeep: null,
-    optPretty: null,
-    convInLabel: null,
-    convOutLabel: null,
+// 转换模块 (JSON <-> String)
+(function() {
+    const ConvertModule = {
+        name: 'String 转换',
+        icon: 'fa-exchange-alt',
+        
+        init: function(container) {
+            container.innerHTML = `
+                <div class="flex flex-col h-full gap-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">JSON ⇄ String 转换</h3>
+                        <div class="flex gap-2">
+                            <button id="conv-swap" class="btn-secondary"><i class="fas fa-retweet"></i> 切换方向</button>
+                            <button id="conv-run" class="btn-primary"><i class="fas fa-play"></i> 转换</button>
+                            <button id="conv-copy" class="btn-secondary"><i class="fas fa-copy"></i> 复制</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 flex-1 min-h-0">
+                        <div class="flex flex-col">
+                            <label id="conv-left-label" class="text-xs text-gray-400 mb-2">输入 JSON</label>
+                            <textarea id="conv-left" class="editor-box flex-1" placeholder="输入 JSON 或字符串"></textarea>
+                        </div>
+                        <div class="flex flex-col">
+                            <label id="conv-right-label" class="text-xs text-gray-400 mb-2">输出结果</label>
+                            <textarea id="conv-right" class="editor-box flex-1" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            `;
 
-    init() {
-        this.inputEl = document.getElementById('convInput');
-        this.outputEl = document.getElementById('convOutput');
-        this.dirJ2S = document.getElementById('dirJ2S');
-        this.dirS2J = document.getElementById('dirS2J');
-        this.optGroupJ2S = document.getElementById('optGroupJ2S');
-        this.optGroupS2J = document.getElementById('optGroupS2J');
-        this.optQuotes = document.getElementById('optQuotes');
-        this.optDeep = document.getElementById('optDeep');
-        this.optPretty = document.getElementById('optPretty');
-        this.convInLabel = document.getElementById('convInLabel');
-        this.convOutLabel = document.getElementById('convOutLabel');
-        console.log('[ConvertModule] Initialized');
-    },
+            this.direction = 'json-to-string';
+            
+            document.getElementById('conv-swap').onclick = () => this.swap();
+            document.getElementById('conv-run').onclick = () => this.convert();
+            document.getElementById('conv-copy').onclick = () => this.copy();
+        },
 
-    onActivate() {
-        const mainInput = document.getElementById('inputJson');
-        if (mainInput && mainInput.value.trim()) {
-            this.inputEl.value = mainInput.value;
-        }
-    },
-
-    onSync(data) {
-        this.inputEl.value = data;
-        if (document.getElementById('viewConvert').classList.contains('hidden') === false) {
-            this.doConvert();
-        }
-    },
-
-    setConvDir(dir) {
-        this.currentDir = dir;
-        if (dir === 'j2s') {
-            this.dirJ2S.classList.add('dir-active');
-            this.dirS2J.classList.remove('dir-active');
-            this.optGroupJ2S.classList.remove('hidden');
-            this.optGroupS2J.classList.add('hidden');
-            this.convInLabel.textContent = '输入：JSON 对象/数组文本 (全局同步)';
-            this.convOutLabel.textContent = '输出：转义后的字符串';
-        } else {
-            this.dirJ2S.classList.remove('dir-active');
-            this.dirS2J.classList.add('dir-active');
-            this.optGroupJ2S.classList.add('hidden');
-            this.optGroupS2J.classList.remove('hidden');
-            this.convInLabel.textContent = '输入：转义的字符串';
-            this.convOutLabel.textContent = '输出：解析后的 JSON';
-        }
-    },
-
-    doConvert(showToastMsg = false) {
-        const input = this.inputEl.value;
-        if (!input || !input.trim()) {
-            this.outputEl.value = '';
-            return;
-        }
-
-        try {
-            if (this.currentDir === 'j2s') {
-                // JSON → String
-                const obj = JSON.parse(input);
-                let result = JSON.stringify(obj);
-                
-                if (!this.optQuotes.checked) {
-                    // Remove outer quotes if it's a string
-                    if (result.startsWith('"') && result.endsWith('"')) {
-                        result = result.slice(1, -1);
-                    }
-                }
-                
-                this.outputEl.value = result;
-                if (showToastMsg) showToast('转换完成：JSON → String', 'success');
-            } else {
-                // String → JSON
-                let str = input;
-                
-                // Deep unwrap
-                if (this.optDeep.checked) {
-                    let prev = str;
-                    let changed = true;
-                    while (changed) {
-                        changed = false;
-                        if ((str.startsWith('"') && str.endsWith('"')) || 
-                            (str.startsWith("'") && str.endsWith("'"))) {
-                            try {
-                                const unwrapped = JSON.parse(str);
-                                if (typeof unwrapped === 'string') {
-                                    str = unwrapped;
-                                    changed = true;
-                                }
-                            } catch (e) {
-                                break;
-                            }
-                        }
-                        if (!changed && str.startsWith('"') && str.endsWith('"')) {
-                            str = str.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-                            changed = true;
-                        }
-                    }
-                }
-                
-                const obj = JSON.parse(str);
-                this.outputEl.value = this.optPretty.checked 
-                    ? JSON.stringify(obj, null, 2) 
-                    : JSON.stringify(obj);
-                    
-                if (showToastMsg) showToast('转换完成：String → JSON', 'success');
+        activate: function(input) {
+            if (input && !document.getElementById('conv-left').value) {
+                document.getElementById('conv-left').value = input;
             }
-        } catch (e) {
-            showToast('解析错误：' + e.message, 'error');
-            this.outputEl.value = '';
+        },
+
+        swap: function() {
+            const left = document.getElementById('conv-left');
+            const right = document.getElementById('conv-right');
+            const temp = left.value;
+            left.value = right.value;
+            right.value = temp;
+
+            this.direction = this.direction === 'json-to-string' ? 'string-to-json' : 'json-to-string';
+            this.updateLabels();
+        },
+
+        updateLabels: function() {
+            const leftLabel = document.getElementById('conv-left-label');
+            const rightLabel = document.getElementById('conv-right-label');
+            
+            if (this.direction === 'json-to-string') {
+                leftLabel.textContent = '输入 JSON';
+                rightLabel.textContent = '输出字符串';
+            } else {
+                leftLabel.textContent = '输入字符串';
+                rightLabel.textContent = '输出 JSON';
+            }
+        },
+
+        convert: function() {
+            const input = document.getElementById('conv-left').value;
+            const outputEl = document.getElementById('conv-right');
+
+            if (!input.trim()) {
+                showToast('请输入内容', 'warning');
+                return;
+            }
+
+            if (this.direction === 'json-to-string') {
+                const parsed = JSONUtils.parse(input);
+                if (parsed === null) {
+                    showToast('无效的 JSON', 'error');
+                    return;
+                }
+                // 转字符串：带引号，可嵌入代码
+                outputEl.value = JSON.stringify(input).slice(1, -1); // 去掉外层引号
+                showToast('转换成功', 'success');
+            } else {
+                // 字符串转 JSON：尝试解析
+                try {
+                    // 先尝试直接解析
+                    let parsed = JSONUtils.parse(input);
+                    if (parsed === null) {
+                        // 尝试加上引号解析
+                        parsed = JSONUtils.parse(`"${input}"`);
+                    }
+                    if (parsed === null) {
+                        // 尝试作为 JSON 对象解析
+                        parsed = JSONUtils.parse(input);
+                    }
+                    if (parsed !== null) {
+                        outputEl.value = JSON.stringify(parsed, null, 2);
+                        showToast('转换成功', 'success');
+                    } else {
+                        outputEl.value = input;
+                        showToast('无法解析为 JSON，保持原样', 'warning');
+                    }
+                } catch (e) {
+                    outputEl.value = input;
+                    showToast('转换失败', 'error');
+                }
+            }
+        },
+
+        copy: function() {
+            const output = document.getElementById('conv-right');
+            output.select();
+            document.execCommand('copy');
+            showToast('已复制', 'success');
         }
-    },
+    };
 
-    swapConv() {
-        const temp = this.currentDir;
-        this.setConvDir(temp === 'j2s' ? 's2j' : 'j2s');
-        const inputValue = this.inputEl.value;
-        this.inputEl.value = this.outputEl.value;
-        this.outputEl.value = inputValue;
-        this.doConvert();
-        showToast('已交换输入/输出方向', 'info');
-    },
-
-    loadConvSample() {
-        const sample = {
-            message: "Hello, World!",
-            count: 42,
-            nested: { key: "value" },
-            array: [1, 2, 3]
-        };
-        this.inputEl.value = JSON.stringify(sample, null, 2);
-        this.doConvert();
-        showToast('已加载示例数据', 'info');
-    },
-
-    copyConvOutput() {
-        const output = this.outputEl.value;
-        if (!output) {
-            showToast('没有可复制的内容', 'warning');
-            return;
-        }
-        navigator.clipboard.writeText(output).then(() => {
-            showToast('已复制到剪贴板', 'success');
-        }).catch(() => {
-            showToast('复制失败', 'error');
-        });
-    },
-
-    getContentForCopy() {
-        return this.outputEl?.value || '';
+    if (window.AppInstance) {
+        window.AppInstance.register('convert', ConvertModule);
     }
-};
-
-App.registerModule('convert', ConvertModule);
-window.setConvDir = (dir) => ConvertModule.setConvDir(dir);
-window.doConvert = (showToastMsg) => ConvertModule.doConvert(showToastMsg);
-window.swapConv = () => ConvertModule.swapConv();
-window.loadConvSample = () => ConvertModule.loadConvSample();
-window.copyConvOutput = () => ConvertModule.copyConvOutput();
+})();
